@@ -1,0 +1,15 @@
+# Swift / SPM
+.build/
+build/
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+Package.resolved
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Claude
+.claude/
