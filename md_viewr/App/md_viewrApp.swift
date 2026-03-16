@@ -22,7 +22,7 @@ struct md_viewrApp: App {
     @StateObject private var document = MarkdownDocument()
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main") {
             ContentView()
                 .environmentObject(document)
                 .onOpenURL { url in
@@ -32,6 +32,8 @@ struct md_viewrApp: App {
         .commands {
             AppCommands(document: document)
         }
+        .defaultSize(width: 900, height: 700)
+        .windowToolbarStyle(.unified)
     }
 }
 

@@ -21,6 +21,8 @@ struct ContentView: View {
     @EnvironmentObject var document: MarkdownDocument
     @State private var selectedHeadingID: String?
     @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
+    @State private var didRestoreState = false
+    @SceneStorage("columnVisibility") private var storedVisibility: String = "automatic"
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -32,6 +34,22 @@ struct ContentView: View {
         .navigationTitle(document.fileName)
         .navigationSubtitle(document.fileURL?.deletingLastPathComponent().path ?? "")
         .frame(minWidth: 600, minHeight: 400)
+        .onAppear {
+            switch storedVisibility {
+            case "all": columnVisibility = .all
+            case "detailOnly": columnVisibility = .detailOnly
+            default: columnVisibility = .automatic
+            }
+            didRestoreState = true
+        }
+        .onChange(of: columnVisibility) { _, newValue in
+            guard didRestoreState else { return }
+            switch newValue {
+            case .all: storedVisibility = "all"
+            case .detailOnly: storedVisibility = "detailOnly"
+            default: storedVisibility = "automatic"
+            }
+        }
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             handleDrop(providers: providers)
         }
