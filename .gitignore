@@ -11,6 +11,9 @@ Package.resolved
 *.swp
 *~
 
+# Worktrees
+.worktrees/
+
 # Claude
 .claude/
 Resources/icon-philosophy.md
