@@ -102,6 +102,16 @@ E = mc^2
 \int_{0}^{\infty} e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
 ```
 
+### Dollar-Sign Syntax
+
+$$
+E = mc^2
+$$
+
+$$
+\int_{0}^{\infty} e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
+$$
+
 ## PlantUML Diagrams
 
 ```plantuml

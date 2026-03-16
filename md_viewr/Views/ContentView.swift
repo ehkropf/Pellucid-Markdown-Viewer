@@ -78,7 +78,7 @@ struct ContentView: View {
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        MarkdownUI.Markdown(document.rawMarkdown, imageBaseURL: document.fileURL?.deletingLastPathComponent())
+                        MarkdownUI.Markdown(document.processedMarkdown, imageBaseURL: document.fileURL?.deletingLastPathComponent())
                             .markdownCodeSyntaxHighlighter(.app)
                             .markdownBlockStyle(\.codeBlock) { configuration in
                                 codeBlockView(configuration: configuration)
@@ -140,7 +140,8 @@ struct ContentView: View {
         if lang == "math" || lang == "latex" {
             MathBlockView(latex: configuration.content.trimmingCharacters(in: .whitespacesAndNewlines))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
+                .padding(.vertical, 16)
+                .markdownMargin(top: .em(0.8), bottom: .em(0.8))
         } else if lang == "plantuml" {
             DiagramBlockView(source: configuration.content)
         } else {

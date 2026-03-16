@@ -26,6 +26,10 @@ class MarkdownDocument: ObservableObject {
     @Published private(set) var tocEntries: [TOCEntry] = []
     @Published private(set) var errorMessage: String?
 
+    var processedMarkdown: String {
+        preprocessBlockMath(rawMarkdown)
+    }
+
     private let fileWatcher = FileWatcher()
     private var systemFileNotificationObserver: (any NSObjectProtocol)?
 
