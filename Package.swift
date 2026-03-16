@@ -36,7 +36,10 @@ let package = Package(
                 .product(name: "MarkdownUI", package: "swift-markdown-ui"),
                 .product(name: "SwiftMath", package: "SwiftMath"),
             ],
-            path: "md_viewr"
+            path: "md_viewr",
+            swiftSettings: [
+                .enableExperimentalFeature("IsolatedDeinit"),
+            ]
         ),
         .testTarget(
             name: "md_viewrTests",
