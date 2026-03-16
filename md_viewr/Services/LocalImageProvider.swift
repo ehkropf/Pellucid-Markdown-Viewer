@@ -18,14 +18,20 @@ import AppKit
 import MarkdownUI
 import SwiftUI
 
-/// Image provider that handles local file:// URLs via NSImage,
-/// falling back to the default network provider for remote URLs.
-struct LocalImageProvider: ImageProvider {
+/// Image provider that loads local file:// URLs via NSImage.
+/// Falls back to the default (network) provider for remote URLs,
+/// nil URLs, or when NSImage fails to load the file.
+struct LocalImageProvider: ImageProvider, Sendable {
     func makeImage(url: URL?) -> some View {
-        if let url, url.isFileURL, let nsImage = NSImage(contentsOf: url) {
-            Image(nsImage: nsImage)
-                .resizable()
-                .scaledToFit()
+        if let url, url.isFileURL {
+            if let nsImage = NSImage(contentsOf: url) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                Label(url.lastPathComponent, systemImage: "photo.badge.exclamationmark")
+                    .foregroundStyle(.secondary)
+            }
         } else {
             DefaultImageProvider.default.makeImage(url: url)
         }
