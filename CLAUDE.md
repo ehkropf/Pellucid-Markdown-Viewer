@@ -69,3 +69,7 @@ scripts/         — build-app.sh, generate-icon.py
 - Use `Group` wrapper for conditional content in SwiftUI views
 - Keep view logic in the view file; business logic in Models/Services
 - Actor isolation for async services (e.g., `PlantUMLRenderer` is an `actor`)
+
+## License
+
+GPL-3.0-or-later. All source files must include the copyright header (see any `.swift` file for the template).
