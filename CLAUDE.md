@@ -1,6 +1,6 @@
 # md_viewr
 
-Native macOS markdown viewer. Swift 6 + SwiftUI. No JavaScript. No Xcode project — SPM only.
+Native macOS markdown viewer. Swift 6 + SwiftUI, macOS 14+. No JavaScript. No Xcode project — SPM only.
 
 ## Build & Run
 
@@ -16,7 +16,7 @@ Native macOS markdown viewer. Swift 6 + SwiftUI. No JavaScript. No Xcode project
 
 ```
 md_viewr/
-  App/           — @main entry point, AppDelegate, menu commands
+  App/           — @main entry point (md_viewrApp), menu commands (AppCommands)
   Models/        — MarkdownDocument (central ObservableObject), TOCEntry, FileWatcher
   Views/         — ContentView, TOCSidebarView, MathBlockView, DiagramBlockView
   Services/      — TOCExtractor, SyntaxHighlighter, PlantUMLRenderer
