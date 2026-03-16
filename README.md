@@ -91,4 +91,4 @@ Built entirely with Swift Package Manager — no Xcode project required.
 
 ## License
 
-MIT
+GPL-3.0-or-later. See [COPYING](COPYING) for details.

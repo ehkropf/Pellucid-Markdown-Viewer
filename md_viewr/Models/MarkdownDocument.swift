@@ -20,10 +20,11 @@ import Markdown
 
 @MainActor
 class MarkdownDocument: ObservableObject {
-    @Published var fileURL: URL?
-    @Published var rawMarkdown: String = ""
-    @Published var fileName: String = "No File"
-    @Published var tocEntries: [TOCEntry] = []
+    @Published private(set) var fileURL: URL?
+    @Published private(set) var rawMarkdown: String = ""
+    @Published private(set) var fileName: String = "No File"
+    @Published private(set) var tocEntries: [TOCEntry] = []
+    @Published private(set) var errorMessage: String?
 
     private let fileWatcher = FileWatcher()
     private var systemFileNotificationObserver: (any NSObjectProtocol)?
@@ -52,6 +53,7 @@ class MarkdownDocument: ObservableObject {
     func loadFile(url: URL) {
         fileURL = url
         fileName = url.lastPathComponent
+        errorMessage = nil
         reloadFile()
 
         fileWatcher.onChange = { [weak self] in
@@ -59,19 +61,26 @@ class MarkdownDocument: ObservableObject {
                 self?.reloadFile()
             }
         }
+        fileWatcher.onWatchFailed = { [weak self] reason in
+            Task { @MainActor in
+                self?.errorMessage = reason
+            }
+        }
         fileWatcher.watch(url: url)
     }
 
-    func reloadFile() {
+    private func reloadFile() {
         guard let url = fileURL else { return }
         do {
             let content = try String(contentsOf: url, encoding: .utf8)
             rawMarkdown = content
+            errorMessage = nil
 
             let document = Document(parsing: content)
             tocEntries = TOCExtractor.extractTOC(from: document)
         } catch {
-            rawMarkdown = "**Error reading file:** \(error.localizedDescription)"
+            errorMessage = "Error reading file: \(error.localizedDescription)"
+            rawMarkdown = ""
             tocEntries = []
         }
     }

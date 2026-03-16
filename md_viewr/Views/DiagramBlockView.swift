@@ -24,6 +24,7 @@ struct DiagramBlockView: View {
     @State private var image: NSImage?
     @State private var isLoading = true
     @State private var isAvailable = true
+    @State private var errorMessage: String?
 
     var body: some View {
         Group {
@@ -67,6 +68,12 @@ struct DiagramBlockView: View {
             Text("Diagram rendering failed")
                 .font(.subheadline.bold())
                 .foregroundStyle(.secondary)
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(12)
@@ -76,16 +83,12 @@ struct DiagramBlockView: View {
 
     private func renderDiagram() async {
         let renderer = PlantUMLRenderer.shared
-        guard await renderer.isAvailable() else {
-            isAvailable = false
-            isLoading = false
-            return
-        }
-
         do {
             image = try await renderer.render(source: source)
+        } catch PlantUMLError.notInstalled {
+            isAvailable = false
         } catch {
-            image = nil
+            errorMessage = error.localizedDescription
         }
         isLoading = false
     }

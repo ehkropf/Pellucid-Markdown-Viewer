@@ -18,7 +18,8 @@ import Foundation
 
 /// Watches a file for changes using DispatchSource.
 /// Handles write, rename, and delete events with debouncing.
-final class FileWatcher: @unchecked Sendable {
+@MainActor
+final class FileWatcher {
     private var source: DispatchSourceFileSystemObject?
     private var fileDescriptor: Int32 = -1
     private var debounceWorkItem: DispatchWorkItem?
@@ -26,6 +27,9 @@ final class FileWatcher: @unchecked Sendable {
 
     /// Called on the main queue when the file changes.
     var onChange: (() -> Void)?
+
+    /// Called when the watcher fails to attach or loses contact with the file.
+    var onWatchFailed: ((_ reason: String) -> Void)?
 
     /// Debounce interval in seconds. Editors often write in multiple steps
     /// (e.g., vim does delete + create for atomic writes).
@@ -51,7 +55,11 @@ final class FileWatcher: @unchecked Sendable {
 
     private func startWatching(url: URL) {
         fileDescriptor = open(url.path, O_EVTONLY)
-        guard fileDescriptor >= 0 else { return }
+        guard fileDescriptor >= 0 else {
+            let err = String(cString: strerror(errno))
+            onWatchFailed?("Cannot watch file: \(err)")
+            return
+        }
 
         source = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: fileDescriptor,
@@ -116,13 +124,17 @@ final class FileWatcher: @unchecked Sendable {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                 self?.tryReopen(url: url, attempt: attempt + 1)
             }
+        } else {
+            onWatchFailed?("File is no longer available: \(url.lastPathComponent)")
         }
     }
 
-    deinit {
+    nonisolated deinit {
+        let source = source
+        let fd = fileDescriptor
         source?.cancel()
-        if fileDescriptor >= 0 {
-            close(fileDescriptor)
+        if fd >= 0 {
+            close(fd)
         }
     }
 }

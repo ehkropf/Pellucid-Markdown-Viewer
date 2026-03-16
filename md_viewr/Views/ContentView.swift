@@ -53,7 +53,9 @@ struct ContentView: View {
 
     private var detail: some View {
         Group {
-            if document.rawMarkdown.isEmpty {
+            if let error = document.errorMessage {
+                errorBanner(error)
+            } else if document.rawMarkdown.isEmpty {
                 emptyState
             } else {
                 ScrollViewReader { proxy in
@@ -83,6 +85,19 @@ struct ContentView: View {
                 }
             }
         }
+    }
+
+    private func errorBanner(_ message: String) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 48))
+                .foregroundStyle(.orange)
+            Text(message)
+                .font(.title3)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var emptyState: some View {

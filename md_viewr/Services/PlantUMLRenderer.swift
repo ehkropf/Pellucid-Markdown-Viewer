@@ -17,6 +17,23 @@
 import AppKit
 import CryptoKit
 
+enum PlantUMLError: LocalizedError {
+    case notInstalled
+    case renderFailed(status: Int32, message: String?)
+    case invalidOutput
+
+    var errorDescription: String? {
+        switch self {
+        case .notInstalled:
+            "PlantUML is not installed"
+        case .renderFailed(_, let message):
+            message ?? "PlantUML exited with an error"
+        case .invalidOutput:
+            "PlantUML produced output that could not be rendered as an image"
+        }
+    }
+}
+
 /// Renders PlantUML diagrams by invoking the `plantuml` CLI as a subprocess.
 /// Caches results by content hash to avoid redundant renders on file reload.
 actor PlantUMLRenderer {
@@ -36,10 +53,9 @@ actor PlantUMLRenderer {
     }
 
     /// Render PlantUML source to an NSImage.
-    /// Returns nil if PlantUML is not installed or rendering fails.
-    func render(source: String) async throws -> NSImage? {
+    func render(source: String) async throws -> NSImage {
         guard isAvailable(), let path = plantumlPath else {
-            return nil
+            throw PlantUMLError.notInstalled
         }
 
         // Check cache
@@ -49,9 +65,7 @@ actor PlantUMLRenderer {
         }
 
         let image = try await runPlantUML(source: source, executablePath: path)
-        if let image {
-            cache[key] = image
-        }
+        cache[key] = image
         return image
     }
 
@@ -91,12 +105,14 @@ actor PlantUMLRenderer {
             if let result, !result.isEmpty, FileManager.default.isExecutableFile(atPath: result) {
                 return result
             }
-        } catch {}
+        } catch {
+            // `which` not found or process launch failure — not actionable, fall through
+        }
 
         return nil
     }
 
-    private func runPlantUML(source: String, executablePath: String) async throws -> NSImage? {
+    private func runPlantUML(source: String, executablePath: String) async throws -> NSImage {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
@@ -120,18 +136,26 @@ actor PlantUMLRenderer {
                     inputPipe.fileHandleForWriting.write(inputData)
                     inputPipe.fileHandleForWriting.closeFile()
 
-                    process.waitUntilExit()
-
+                    // Read stdout/stderr BEFORE waitUntilExit to avoid deadlock
+                    // when output exceeds the pipe buffer (~64KB on macOS).
                     let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+                    let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+
+                    process.waitUntilExit()
 
                     if process.terminationStatus == 0, !outputData.isEmpty {
                         if let image = NSImage(data: outputData) {
                             continuation.resume(returning: image)
                         } else {
-                            continuation.resume(returning: nil)
+                            continuation.resume(throwing: PlantUMLError.invalidOutput)
                         }
                     } else {
-                        continuation.resume(returning: nil)
+                        let stderr = String(data: errorData, encoding: .utf8)?
+                            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                        continuation.resume(throwing: PlantUMLError.renderFailed(
+                            status: process.terminationStatus,
+                            message: stderr.isEmpty ? nil : stderr
+                        ))
                     }
                 } catch {
                     continuation.resume(throwing: error)

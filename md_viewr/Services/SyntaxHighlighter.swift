@@ -20,8 +20,6 @@ import MarkdownUI
 /// Regex-based syntax highlighter that covers common token types.
 /// Produces styled SwiftUI Text for use with MarkdownUI's CodeSyntaxHighlighter protocol.
 struct AppCodeSyntaxHighlighter: CodeSyntaxHighlighter {
-    @Environment(\.colorScheme) private var colorScheme
-
     func highlightCode(_ code: String, language: String?) -> Text {
         guard let language = language?.lowercased(),
               let grammar = grammars[language]
@@ -217,22 +215,8 @@ private let grammars: [String: Grammar] = [
         (#"\b\d[\d_.]*[LlFfDd]?\b"#, .number),
         (#"\b0x[0-9a-fA-F_]+\b"#, .number),
     ]),
-    "yaml": Grammar(patterns: [
-        (#"#[^\n]*"#, .comment),
-        (#"^[\w.-]+\s*:"#, .keyword),
-        (#""[^"\\]*(?:\\.[^"\\]*)*""#, .string),
-        (#"'[^']*'"#, .string),
-        (#"\b(true|false|null|yes|no|on|off)\b"#, .constant),
-        (#"\b\d[\d.]*\b"#, .number),
-    ], options: .anchorsMatchLines),
-    "yml": Grammar(patterns: [
-        (#"#[^\n]*"#, .comment),
-        (#"^[\w.-]+\s*:"#, .keyword),
-        (#""[^"\\]*(?:\\.[^"\\]*)*""#, .string),
-        (#"'[^']*'"#, .string),
-        (#"\b(true|false|null|yes|no|on|off)\b"#, .constant),
-        (#"\b\d[\d.]*\b"#, .number),
-    ], options: .anchorsMatchLines),
+    "yaml": yamlGrammar,
+    "yml": yamlGrammar,
     "toml": Grammar(patterns: [
         (#"#[^\n]*"#, .comment),
         (#"\[[\w.]+\]"#, .keyword),
@@ -266,21 +250,26 @@ private let grammars: [String: Grammar] = [
         (#"(?i)\b(SELECT|FROM|WHERE|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|TABLE|INDEX|VIEW|INTO|VALUES|SET|JOIN|LEFT|RIGHT|INNER|OUTER|ON|AND|OR|NOT|IN|IS|NULL|AS|ORDER|BY|GROUP|HAVING|LIMIT|OFFSET|UNION|ALL|DISTINCT|EXISTS|BETWEEN|LIKE|CASE|WHEN|THEN|ELSE|END|BEGIN|COMMIT|ROLLBACK|PRIMARY|KEY|FOREIGN|REFERENCES|CONSTRAINT|DEFAULT|CHECK|UNIQUE|CASCADE|GRANT|REVOKE)\b"#, .keyword),
         (#"\b\d[\d.]*\b"#, .number),
     ]),
-    "markdown": Grammar(patterns: [
-        (#"^#{1,6}\s+.*$"#, .keyword),
-        (#"\*\*[^*]+\*\*"#, .keyword),
-        (#"\*[^*]+\*"#, .string),
-        (#"`[^`]+`"#, .attribute),
-        (#"\[([^\]]+)\]\([^\)]+\)"#, .string),
-    ], options: .anchorsMatchLines),
-    "md": Grammar(patterns: [
-        (#"^#{1,6}\s+.*$"#, .keyword),
-        (#"\*\*[^*]+\*\*"#, .keyword),
-        (#"\*[^*]+\*"#, .string),
-        (#"`[^`]+`"#, .attribute),
-        (#"\[([^\]]+)\]\([^\)]+\)"#, .string),
-    ], options: .anchorsMatchLines),
+    "markdown": markdownGrammar,
+    "md": markdownGrammar,
 ]
+
+private let yamlGrammar = Grammar(patterns: [
+    (#"#[^\n]*"#, .comment),
+    (#"^[\w.-]+\s*:"#, .keyword),
+    (#""[^"\\]*(?:\\.[^"\\]*)*""#, .string),
+    (#"'[^']*'"#, .string),
+    (#"\b(true|false|null|yes|no|on|off)\b"#, .constant),
+    (#"\b\d[\d.]*\b"#, .number),
+], options: .anchorsMatchLines)
+
+private let markdownGrammar = Grammar(patterns: [
+    (#"^#{1,6}\s+.*$"#, .keyword),
+    (#"\*\*[^*]+\*\*"#, .keyword),
+    (#"\*[^*]+\*"#, .string),
+    (#"`[^`]+`"#, .attribute),
+    (#"\[([^\]]+)\]\([^\)]+\)"#, .string),
+], options: .anchorsMatchLines)
 
 private let jsGrammar = Grammar(patterns: [
     (#"//[^\n]*"#, .comment),
