@@ -2,6 +2,11 @@
 
 A native macOS markdown viewer built with Swift and SwiftUI. No web views, no JavaScript — just fast, native rendering.
 
+<p align="center">
+  <img src="screenshots/empty-state.png" width="45%" alt="Empty state" />
+  <img src="screenshots/test-md.png" width="45%" alt="Rendering test.md" />
+</p>
+
 ## Features
 
 - **GitHub Flavored Markdown** — full GFM spec: tables, task lists, strikethrough, fenced code blocks

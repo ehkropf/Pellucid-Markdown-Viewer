@@ -60,11 +60,12 @@ struct ContentView: View {
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        MarkdownUI.Markdown(document.rawMarkdown)
+                        MarkdownUI.Markdown(document.rawMarkdown, imageBaseURL: document.fileURL?.deletingLastPathComponent())
                             .markdownCodeSyntaxHighlighter(.app)
                             .markdownBlockStyle(\.codeBlock) { configuration in
                                 codeBlockView(configuration: configuration)
                             }
+                            .markdownImageProvider(.local)
                             .markdownTheme(.gitHub)
                             .padding(.horizontal, 32)
                             .padding(.vertical, 24)

@@ -77,10 +77,10 @@ def fibonacci(n):
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| GFM rendering | Done | Phase 1 |
-| TOC sidebar | Pending | Phase 2 |
-| File watching | Pending | Phase 3 |
-| Syntax highlighting | Pending | Phase 4 |
+| GFM rendering | Done | Core feature |
+| TOC sidebar | Done | Sidebar navigation |
+| File watching | Done | Live reload |
+| Syntax highlighting | Done | ~20 languages |
 
 ## Horizontal Rule
 
@@ -90,7 +90,9 @@ def fibonacci(n):
 
 ![Alt text for a test image](https://via.placeholder.com/300x100.png?text=Test+Image)
 
-## Math (Phase 5)
+![App screenshot](screenshots/test-md.png)
+
+## Math
 
 ```math
 E = mc^2
@@ -100,7 +102,7 @@ E = mc^2
 \int_{0}^{\infty} e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
 ```
 
-## PlantUML Diagrams (Phase 6)
+## PlantUML Diagrams
 
 ```plantuml
 @startuml
