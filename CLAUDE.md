@@ -19,7 +19,7 @@ md_viewr/
   App/           — @main entry point (md_viewrApp), menu commands (AppCommands)
   Models/        — MarkdownDocument (central ObservableObject), TOCEntry, FileWatcher
   Views/         — ContentView, TOCSidebarView, MathBlockView, DiagramBlockView
-  Services/      — TOCExtractor, SyntaxHighlighter, PlantUMLRenderer
+  Services/      — TOCExtractor, SyntaxHighlighter, PlantUMLRenderer, LocalImageProvider
   Utilities/     — Slugify
 md_viewrTests/   — test target (logic tests only, no UI tests)
 Resources/       — Info.plist, AppIcon.{svg,png,icns}
@@ -32,6 +32,8 @@ scripts/         — build-app.sh, generate-icon.py
 - TOC extracted from swift-markdown AST via `MarkupWalker`, displayed in `NavigationSplitView` sidebar
 - `ScrollViewReader` handles click-to-scroll from TOC to heading
 - FileWatcher uses `DispatchSource` with 200ms debounce; handles atomic writes (delete+recreate)
+- `WindowGroup(id: "main")` with `.defaultSize` and `.windowToolbarStyle(.unified)` — frame auto-restores across launches
+- Sidebar visibility persisted via `@SceneStorage` string bridge with race-safe restore guard (`didRestoreState`)
 
 ## Key Constraints
 
