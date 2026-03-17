@@ -43,7 +43,7 @@ class MarkdownDocument: ObservableObject {
         }
     }
 
-    nonisolated deinit {
+    deinit {
         let observer = systemFileNotificationObserver
         if let observer {
             NotificationCenter.default.removeObserver(observer)

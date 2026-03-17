@@ -129,7 +129,7 @@ final class FileWatcher {
         }
     }
 
-    nonisolated deinit {
+    deinit {
         let source = source
         let fd = fileDescriptor
         source?.cancel()
