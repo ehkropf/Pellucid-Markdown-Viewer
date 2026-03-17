@@ -17,7 +17,6 @@
 import SwiftUI
 
 struct DocumentWindowView: View {
-    let initialURL: URL?
     @StateObject private var document = MarkdownDocument()
     @Environment(WindowManager.self) private var windowManager
     @Environment(\.openWindow) private var openWindow
@@ -35,7 +34,7 @@ struct DocumentWindowView: View {
                     windowManager.openWindowAction = openWindow
                 }
                 windowManager.register(document)
-                if let url = initialURL {
+                if let url = windowManager.claimQueuedURL() {
                     document.loadFile(url: url)
                     windowManager.updateMapping(for: document)
                 }

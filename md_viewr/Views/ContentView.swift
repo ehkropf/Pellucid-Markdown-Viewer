@@ -51,8 +51,17 @@ struct ContentView: View {
             default: storedVisibility = "automatic"
             }
         }
-        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
-            handleDrop(providers: providers)
+        .dropDestination(for: URL.self) { urls, _ in
+            guard let url = urls.first,
+                  ["md", "markdown", "mdown", "mkd"].contains(url.pathExtension.lowercased())
+            else { return false }
+            if document.fileURL == nil {
+                document.loadFile(url: url)
+                windowManager.updateMapping(for: document)
+            } else {
+                windowManager.openFile(url: url)
+            }
+            return true
         }
     }
 
@@ -157,24 +166,5 @@ struct ContentView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .markdownMargin(top: .zero, bottom: .em(0.8))
         }
-    }
-
-    private func handleDrop(providers: [NSItemProvider]) -> Bool {
-        guard let provider = providers.first else { return false }
-        provider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { data, _ in
-            guard let data = data as? Data,
-                  let url = URL(dataRepresentation: data, relativeTo: nil),
-                  ["md", "markdown", "mdown", "mkd"].contains(url.pathExtension.lowercased())
-            else { return }
-            DispatchQueue.main.async {
-                if document.fileURL == nil {
-                    document.loadFile(url: url)
-                    windowManager.updateMapping(for: document)
-                } else {
-                    windowManager.openFile(url: url)
-                }
-            }
-        }
-        return true
     }
 }

@@ -25,7 +25,7 @@ final class WindowManager {
     private var openDocuments: [FileIdentity: MarkdownDocument] = [:]
     private var windowMap: [ObjectIdentifier: NSWindow] = [:]
     var openWindowAction: OpenWindowAction?
-    private var pendingURLs: [URL] = []
+    private var urlQueue: [URL] = []
 
     private init() {}
 
@@ -43,11 +43,9 @@ final class WindowManager {
     }
 
     func updateMapping(for document: MarkdownDocument) {
-        // Remove old mapping for this document
         for (key, doc) in openDocuments where doc === document {
             openDocuments.removeValue(forKey: key)
         }
-        // Add new mapping
         if let url = document.fileURL, let identity = FileIdentity(url: url) {
             openDocuments[identity] = document
         }
@@ -85,18 +83,22 @@ final class WindowManager {
             return
         }
 
-        // Open new window
+        // Queue URL and open a new blank window
+        urlQueue.append(resolved)
         if let action = openWindowAction {
-            action(id: "viewer", value: resolved)
-        } else {
-            pendingURLs.append(resolved)
+            action(id: "viewer")
         }
+    }
+
+    func claimQueuedURL() -> URL? {
+        guard !urlQueue.isEmpty else { return nil }
+        return urlQueue.removeFirst()
     }
 
     func processPendingURLs() {
         guard openWindowAction != nil else { return }
-        let urls = pendingURLs
-        pendingURLs.removeAll()
+        let urls = urlQueue
+        urlQueue.removeAll()
         for url in urls {
             openFile(url: url)
         }

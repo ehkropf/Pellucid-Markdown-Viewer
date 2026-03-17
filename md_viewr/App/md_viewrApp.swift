@@ -21,8 +21,8 @@ struct md_viewrApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        WindowGroup(id: "viewer", for: URL.self) { $url in
-            DocumentWindowView(initialURL: url)
+        WindowGroup(id: "viewer") {
+            DocumentWindowView()
                 .environment(WindowManager.shared)
         }
         .commands {
@@ -41,21 +41,43 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let args = CommandLine.arguments
-        for arg in args.dropFirst() {
-            let url: URL
-            if arg.hasPrefix("/") {
-                url = URL(fileURLWithPath: arg)
-            } else {
-                let cwd = FileManager.default.currentDirectoryPath
-                url = URL(fileURLWithPath: cwd).appendingPathComponent(arg)
+        // Guard against duplicate instances when binary is run directly
+        if let bundleID = Bundle.main.bundleIdentifier {
+            let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+            if running.count > 1 {
+                // Forward CLI args to existing instance via Finder open, then quit
+                for arg in CommandLine.arguments.dropFirst() {
+                    let url = Self.resolveFileArg(arg)
+                    if FileManager.default.fileExists(atPath: url.path) {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                DispatchQueue.main.async {
+                    NSApp.terminate(nil)
+                }
+                return
             }
-            let resolved = url.standardized
+        }
+
+        // Handle CLI file arguments
+        for arg in CommandLine.arguments.dropFirst() {
+            let resolved = Self.resolveFileArg(arg)
             if FileManager.default.fileExists(atPath: resolved.path) {
                 DispatchQueue.main.async {
                     WindowManager.shared.openFile(url: resolved)
                 }
             }
         }
+    }
+
+    private static func resolveFileArg(_ arg: String) -> URL {
+        let url: URL
+        if arg.hasPrefix("/") {
+            url = URL(fileURLWithPath: arg)
+        } else {
+            let cwd = FileManager.default.currentDirectoryPath
+            url = URL(fileURLWithPath: cwd).appendingPathComponent(arg)
+        }
+        return url.standardized
     }
 }
