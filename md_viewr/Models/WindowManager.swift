@@ -26,6 +26,7 @@ final class WindowManager {
     private var windowMap: [ObjectIdentifier: NSWindow] = [:]
     var openWindowAction: OpenWindowAction?
     private var urlQueue: [URL] = []
+    private var nextCascadePoint: NSPoint = .zero
 
     private init() {}
 
@@ -53,6 +54,7 @@ final class WindowManager {
 
     func registerWindow(_ window: NSWindow, for document: MarkdownDocument) {
         windowMap[ObjectIdentifier(document)] = window
+        nextCascadePoint = window.cascadeTopLeft(from: nextCascadePoint)
         NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
             object: window,
