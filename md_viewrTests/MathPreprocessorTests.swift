@@ -131,4 +131,23 @@ final class MathPreprocessorTests: XCTestCase {
         let expected = "```math\n\\begin{align}\na &= b \\\\\nc &= d\n\\end{align}\n```"
         XCTAssertEqual(preprocessBlockMath(input), expected)
     }
+
+    func testSingleLineDollarSignContentNotConverted() {
+        let input = "$$ x^2 $$"
+        XCTAssertEqual(preprocessBlockMath(input), input)
+    }
+
+    func testFourBacktickFenceProtectsDollarSigns() {
+        let input = "````\n$$\nstuff\n$$\n````"
+        XCTAssertEqual(preprocessBlockMath(input), input)
+    }
+
+    func testUnclosedFencedCodeBlockProtectsDollarSigns() {
+        let input = "```python\nprint('hello')\n$$\nx^2\n$$"
+        XCTAssertEqual(preprocessBlockMath(input), input)
+    }
+
+    func testEmptyInput() {
+        XCTAssertEqual(preprocessBlockMath(""), "")
+    }
 }

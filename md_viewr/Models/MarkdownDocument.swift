@@ -25,10 +25,7 @@ class MarkdownDocument: ObservableObject {
     @Published private(set) var fileName: String = "No File"
     @Published private(set) var tocEntries: [TOCEntry] = []
     @Published private(set) var errorMessage: String?
-
-    var processedMarkdown: String {
-        preprocessBlockMath(rawMarkdown)
-    }
+    @Published private(set) var processedMarkdown: String = ""
 
     private let fileWatcher = FileWatcher()
     private var systemFileNotificationObserver: (any NSObjectProtocol)?
@@ -78,6 +75,7 @@ class MarkdownDocument: ObservableObject {
         do {
             let content = try String(contentsOf: url, encoding: .utf8)
             rawMarkdown = content
+            processedMarkdown = preprocessBlockMath(content)
             errorMessage = nil
 
             let document = Document(parsing: content)
@@ -85,6 +83,7 @@ class MarkdownDocument: ObservableObject {
         } catch {
             errorMessage = "Error reading file: \(error.localizedDescription)"
             rawMarkdown = ""
+            processedMarkdown = ""
             tocEntries = []
         }
     }

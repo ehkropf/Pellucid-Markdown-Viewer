@@ -45,11 +45,8 @@ func preprocessBlockMath(_ markdown: String) -> String {
             }
 
         case .insideFencedCodeBlock(let fence):
-            if trimmed == fence || (trimmed.hasPrefix(fence) && trimmed.drop(while: { $0 == fence.first! }).trimmingCharacters(in: .whitespaces).isEmpty) {
-                // Close if line is the same fence characters (possibly more)
-                if isFenceClose(trimmed, opener: fence) {
-                    state = .normal
-                }
+            if isFenceClose(trimmed, opener: fence) {
+                state = .normal
             }
             result.append(line)
 
@@ -65,6 +62,7 @@ func preprocessBlockMath(_ markdown: String) -> String {
 
     // Auto-close unclosed math block
     if case .insideBlockMath = state {
+        print("[MathPreprocessor] Warning: unclosed $$ block at end of document, auto-closing")
         result.append("```")
     }
 
