@@ -17,8 +17,8 @@ Native macOS markdown viewer. Swift 6 + SwiftUI, macOS 14+. No JavaScript. No Xc
 ```
 md_viewr/
   App/           — @main entry point (md_viewrApp), menu commands (AppCommands)
-  Models/        — MarkdownDocument (central ObservableObject), TOCEntry, FileWatcher
-  Views/         — ContentView, TOCSidebarView, MathBlockView, DiagramBlockView
+  Models/        — MarkdownDocument, WindowManager, FileIdentity, TOCEntry, FileWatcher
+  Views/         — DocumentWindowView, ContentView, WindowAccessor, TOCSidebarView, MathBlockView, DiagramBlockView
   Services/      — TOCExtractor, SyntaxHighlighter, PlantUMLRenderer, LocalImageProvider
   Utilities/     — Slugify
 md_viewrTests/   — test target (logic tests only, no UI tests)
@@ -26,13 +26,16 @@ Resources/       — Info.plist, AppIcon.{svg,png,icns}
 scripts/         — build-app.sh, generate-icon.py
 ```
 
-- `MarkdownDocument` is the central `@MainActor ObservableObject` — owns file URL, raw text, TOC, FileWatcher
+- **Multi-window**: `WindowGroup(id: "viewer", for: URL.self)` — each file opens in its own window
+- `WindowManager` (`@MainActor @Observable` singleton) tracks open documents, deduplicates by `FileIdentity` (device+inode via `stat()`), reuses empty windows, brings existing windows to front
+- `DocumentWindowView` wraps `ContentView` per window — creates `@StateObject` `MarkdownDocument`, registers with `WindowManager`, captures `NSWindow` via `WindowAccessor`
+- All file-open paths (File > Open, drag-drop, CLI args, Finder) converge through `WindowManager.openFile(url:)`
+- `MarkdownDocument` is a clean `@MainActor ObservableObject` — owns file URL, raw text, TOC, FileWatcher
 - MarkdownUI renders GFM with `.markdownTheme(.gitHub)`
 - Code blocks dispatch via `.markdownBlockStyle(\.codeBlock)`: `math`/`latex` → MathBlockView, `plantuml` → DiagramBlockView, else → syntax-highlighted
 - TOC extracted from swift-markdown AST via `MarkupWalker`, displayed in `NavigationSplitView` sidebar
 - `ScrollViewReader` handles click-to-scroll from TOC to heading
 - FileWatcher uses `DispatchSource` with 200ms debounce; handles atomic writes (delete+recreate)
-- `WindowGroup(id: "main")` with `.defaultSize` and `.windowToolbarStyle(.unified)` — frame auto-restores across launches
 - Sidebar visibility persisted via `@SceneStorage` string bridge with race-safe restore guard (`didRestoreState`)
 
 ## Key Constraints
@@ -54,8 +57,8 @@ scripts/         — build-app.sh, generate-icon.py
 
 - Running bare executable (not .app bundle) causes window focus/z-order issues — always test with `build/md_viewr.app`
 - `NavigationSplitView` adds its own sidebar toggle — don't add a manual one
-- `@preconcurrency import Foundation` needed in MarkdownDocument for `NSObjectProtocol` Sendable workaround
-- `nonisolated deinit` with local variable capture pattern for removing NotificationCenter observers in `@MainActor` classes
+- Window cleanup uses `NSWindow.willCloseNotification` (more reliable than `onDisappear` on macOS)
+- `WindowManager.openWindowAction` captured once from first window's environment — set only if nil
 - `build-app.sh` copies SwiftMath's `.bundle` resources — math rendering breaks without them
 - TOCExtractor uses `Heading.plainText` (custom extension) that must match MarkdownUI's `renderPlainText()`
 

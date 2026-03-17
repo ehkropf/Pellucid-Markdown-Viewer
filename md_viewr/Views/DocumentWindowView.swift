@@ -31,16 +31,15 @@ struct DocumentWindowView: View {
                 }
             }
             .onAppear {
-                windowManager.openWindowAction = openWindow
+                if windowManager.openWindowAction == nil {
+                    windowManager.openWindowAction = openWindow
+                }
                 windowManager.register(document)
                 if let url = initialURL {
                     document.loadFile(url: url)
                     windowManager.updateMapping(for: document)
                 }
                 windowManager.processPendingURLs()
-            }
-            .onDisappear {
-                windowManager.unregister(document)
             }
     }
 }

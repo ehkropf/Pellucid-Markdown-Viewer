@@ -55,6 +55,16 @@ final class WindowManager {
 
     func registerWindow(_ window: NSWindow, for document: MarkdownDocument) {
         windowMap[ObjectIdentifier(document)] = window
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [weak self, weak document] _ in
+            Task { @MainActor in
+                guard let self, let document else { return }
+                self.unregister(document)
+            }
+        }
     }
 
     func openFile(url: URL) {
@@ -90,11 +100,6 @@ final class WindowManager {
         for url in urls {
             openFile(url: url)
         }
-    }
-
-    private func existingDocument(for url: URL) -> MarkdownDocument? {
-        guard let identity = FileIdentity(url: url) else { return nil }
-        return openDocuments[identity]
     }
 
     private func emptyDocument() -> MarkdownDocument? {
