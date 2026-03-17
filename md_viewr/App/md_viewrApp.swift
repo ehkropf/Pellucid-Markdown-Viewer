@@ -19,18 +19,14 @@ import SwiftUI
 @main
 struct md_viewrApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @StateObject private var document = MarkdownDocument()
 
     var body: some Scene {
-        WindowGroup(id: "main") {
-            ContentView()
-                .environmentObject(document)
-                .onOpenURL { url in
-                    document.loadFile(url: url)
-                }
+        WindowGroup(id: "viewer", for: URL.self) { $url in
+            DocumentWindowView(initialURL: url)
+                .environment(WindowManager.shared)
         }
         .commands {
-            AppCommands(document: document)
+            AppCommands(windowManager: WindowManager.shared)
         }
         .defaultSize(width: 900, height: 700)
         .windowToolbarStyle(.unified)
@@ -39,41 +35,27 @@ struct md_viewrApp: App {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     func application(_ application: NSApplication, open urls: [URL]) {
-        guard let url = urls.first else { return }
-        NotificationCenter.default.post(
-            name: .openFileFromSystem,
-            object: nil,
-            userInfo: ["url": url]
-        )
+        for url in urls {
+            WindowManager.shared.openFile(url: url)
+        }
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Check for CLI argument: md_viewr /path/to/file.md
         let args = CommandLine.arguments
-        if args.count > 1 {
-            let path = args[1]
+        for arg in args.dropFirst() {
             let url: URL
-            if path.hasPrefix("/") {
-                url = URL(fileURLWithPath: path)
+            if arg.hasPrefix("/") {
+                url = URL(fileURLWithPath: arg)
             } else {
-                // Resolve relative paths against the current working directory
                 let cwd = FileManager.default.currentDirectoryPath
-                url = URL(fileURLWithPath: cwd).appendingPathComponent(path)
+                url = URL(fileURLWithPath: cwd).appendingPathComponent(arg)
             }
             let resolved = url.standardized
             if FileManager.default.fileExists(atPath: resolved.path) {
                 DispatchQueue.main.async {
-                    NotificationCenter.default.post(
-                        name: .openFileFromSystem,
-                        object: nil,
-                        userInfo: ["url": resolved]
-                    )
+                    WindowManager.shared.openFile(url: resolved)
                 }
             }
         }
     }
-}
-
-extension Notification.Name {
-    static let openFileFromSystem = Notification.Name("openFileFromSystem")
 }

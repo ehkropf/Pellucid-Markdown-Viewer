@@ -18,7 +18,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct AppCommands: Commands {
-    @ObservedObject var document: MarkdownDocument
+    let windowManager: WindowManager
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -33,7 +33,7 @@ struct AppCommands: Commands {
 
     private func openFile() {
         let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = false
+        panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
 
         let markdownTypes: [UTType] = [
@@ -45,8 +45,10 @@ struct AppCommands: Commands {
 
         panel.allowedContentTypes = markdownTypes
 
-        if panel.runModal() == .OK, let url = panel.url {
-            document.loadFile(url: url)
+        if panel.runModal() == .OK {
+            for url in panel.urls {
+                windowManager.openFile(url: url)
+            }
         }
     }
 }

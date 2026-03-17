@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-@preconcurrency import Foundation
+import Foundation
 import SwiftUI
 import Markdown
 
@@ -28,28 +28,6 @@ class MarkdownDocument: ObservableObject {
     @Published private(set) var processedMarkdown: String = ""
 
     private let fileWatcher = FileWatcher()
-    private var systemFileNotificationObserver: (any NSObjectProtocol)?
-
-    init() {
-        systemFileNotificationObserver = NotificationCenter.default.addObserver(
-            forName: .openFileFromSystem,
-            object: nil,
-            queue: .main
-        ) { [weak self] notification in
-            let url = notification.userInfo?["url"] as? URL
-            Task { @MainActor in
-                guard let self, let url else { return }
-                self.loadFile(url: url)
-            }
-        }
-    }
-
-    deinit {
-        let observer = systemFileNotificationObserver
-        if let observer {
-            NotificationCenter.default.removeObserver(observer)
-        }
-    }
 
     func loadFile(url: URL) {
         fileURL = url

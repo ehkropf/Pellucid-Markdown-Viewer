@@ -19,6 +19,7 @@ import MarkdownUI
 
 struct ContentView: View {
     @EnvironmentObject var document: MarkdownDocument
+    @Environment(WindowManager.self) private var windowManager
     @State private var selectedHeadingID: String?
     @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
     @State private var didRestoreState = false
@@ -166,7 +167,12 @@ struct ContentView: View {
                   ["md", "markdown", "mdown", "mkd"].contains(url.pathExtension.lowercased())
             else { return }
             DispatchQueue.main.async {
-                document.loadFile(url: url)
+                if document.fileURL == nil {
+                    document.loadFile(url: url)
+                    windowManager.updateMapping(for: document)
+                } else {
+                    windowManager.openFile(url: url)
+                }
             }
         }
         return true
