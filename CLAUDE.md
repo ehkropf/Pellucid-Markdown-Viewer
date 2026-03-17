@@ -20,13 +20,13 @@ md_viewr/
   Models/        — MarkdownDocument, WindowManager, FileIdentity, TOCEntry, FileWatcher
   Views/         — DocumentWindowView, ContentView, WindowAccessor, TOCSidebarView, MathBlockView, DiagramBlockView
   Services/      — TOCExtractor, SyntaxHighlighter, PlantUMLRenderer, LocalImageProvider
-  Utilities/     — Slugify
+  Utilities/     — Slugify, MathPreprocessor
 md_viewrTests/   — test target (logic tests only, no UI tests)
 Resources/       — Info.plist, AppIcon.{svg,png,icns}
 scripts/         — build-app.sh, generate-icon.py
 ```
 
-- **Multi-window**: `WindowGroup(id: "viewer", for: URL.self)` — each file opens in its own window
+- **Multi-window**: `WindowGroup(id: "viewer")` — each file opens in its own window
 - `WindowManager` (`@MainActor @Observable` singleton) tracks open documents, deduplicates by `FileIdentity` (device+inode via `stat()`), reuses empty windows, brings existing windows to front
 - `DocumentWindowView` wraps `ContentView` per window — creates `@StateObject` `MarkdownDocument`, registers with `WindowManager`, captures `NSWindow` via `WindowAccessor`
 - All file-open paths (File > Open, drag-drop, CLI args, Finder) converge through `WindowManager.openFile(url:)`

@@ -61,6 +61,10 @@ if [ -n "$SWIFTMATH_BUNDLE" ]; then
     echo "  Copied SwiftMath resources"
 fi
 
+# Ad-hoc code sign
+echo "Signing (ad-hoc)..."
+codesign --force --deep --sign - "$APP_BUNDLE"
+
 echo ""
 echo "Built: ${APP_BUNDLE}"
 echo "Run:   open ${APP_BUNDLE}"
