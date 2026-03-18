@@ -22,6 +22,8 @@ struct ContentView: View {
     @Environment(WindowManager.self) private var windowManager
     @State private var selectedHeadingID: String?
     @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
+    /// Guards against onChange(of: columnVisibility) firing during onAppear
+    /// restoration, which would overwrite the stored value with the default.
     @State private var didRestoreState = false
     @SceneStorage("columnVisibility") private var storedVisibility: String = "automatic"
 
@@ -53,7 +55,7 @@ struct ContentView: View {
         }
         .dropDestination(for: URL.self) { urls, _ in
             guard let url = urls.first,
-                  ["md", "markdown", "mdown", "mkd"].contains(url.pathExtension.lowercased())
+                  markdownExtensions.contains(url.pathExtension.lowercased())
             else { return false }
             if document.fileURL == nil {
                 document.loadFile(url: url)
@@ -106,6 +108,7 @@ struct ContentView: View {
                             withAnimation {
                                 proxy.scrollTo(id, anchor: .top)
                             }
+                            // Clear selection after scroll animation so the same heading can be re-selected
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                                 selectedHeadingID = nil
                             }

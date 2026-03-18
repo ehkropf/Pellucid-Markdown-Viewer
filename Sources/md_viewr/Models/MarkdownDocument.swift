@@ -18,13 +18,15 @@ import Foundation
 import SwiftUI
 import Markdown
 
+/// Per-file document model. Owns the file URL, raw/processed markdown, TOC, and file watcher.
+/// `processedMarkdown` is `rawMarkdown` with `$$` blocks converted to fenced math blocks.
 @MainActor
-class MarkdownDocument: ObservableObject {
+final class MarkdownDocument: ObservableObject {
     @Published private(set) var fileURL: URL?
     @Published private(set) var rawMarkdown: String = ""
     @Published private(set) var fileName: String = "No File"
     @Published private(set) var tocEntries: [TOCEntry] = []
-    @Published private(set) var errorMessage: String?
+    @Published var errorMessage: String?
     @Published private(set) var processedMarkdown: String = ""
 
     private let fileWatcher = FileWatcher()

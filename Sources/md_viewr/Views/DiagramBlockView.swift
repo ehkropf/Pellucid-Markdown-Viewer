@@ -17,29 +17,35 @@
 import SwiftUI
 
 /// Displays a PlantUML diagram rendered via the CLI subprocess.
-/// Shows a loading indicator while rendering, fallback on error.
+/// Shows a spinner while rendering, a "not installed" prompt if PlantUML is missing,
+/// or the error message if rendering fails.
 struct DiagramBlockView: View {
     let source: String
 
-    @State private var image: NSImage?
-    @State private var isLoading = true
-    @State private var isAvailable = true
-    @State private var errorMessage: String?
+    @State private var state: RenderState = .loading
+
+    private enum RenderState {
+        case loading
+        case rendered(NSImage)
+        case unavailable
+        case failed(String)
+    }
 
     var body: some View {
         Group {
-            if !isAvailable {
-                unavailableView
-            } else if isLoading {
+            switch state {
+            case .loading:
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 60)
-            } else if let image {
+            case .rendered(let image):
                 Image(nsImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(maxWidth: .infinity)
-            } else {
-                errorView
+            case .unavailable:
+                unavailableView
+            case .failed(let message):
+                errorView(message)
             }
         }
         .padding(.vertical, 8)
@@ -63,17 +69,15 @@ struct DiagramBlockView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private var errorView: some View {
+    private func errorView(_ message: String) -> some View {
         VStack(spacing: 4) {
             Text("Diagram rendering failed")
                 .font(.subheadline.bold())
                 .foregroundStyle(.secondary)
-            if let errorMessage {
-                Text(errorMessage)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-            }
+            Text(message)
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
         }
         .frame(maxWidth: .infinity)
         .padding(12)
@@ -84,12 +88,12 @@ struct DiagramBlockView: View {
     private func renderDiagram() async {
         let renderer = PlantUMLRenderer.shared
         do {
-            image = try await renderer.render(source: source)
+            let image = try await renderer.render(source: source)
+            state = .rendered(image)
         } catch PlantUMLError.notInstalled {
-            isAvailable = false
+            state = .unavailable
         } catch {
-            errorMessage = error.localizedDescription
+            state = .failed(error.localizedDescription)
         }
-        isLoading = false
     }
 }

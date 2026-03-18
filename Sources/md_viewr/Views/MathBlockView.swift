@@ -18,6 +18,7 @@ import SwiftUI
 import SwiftMath
 
 /// Renders a LaTeX math expression using SwiftMath (Core Graphics, no JS).
+/// SwiftMath displays parse errors inline via `displayErrorInline` (default: true).
 struct MathBlockView: NSViewRepresentable {
     let latex: String
 
@@ -27,6 +28,7 @@ struct MathBlockView: NSViewRepresentable {
         label.labelMode = .display
         label.textAlignment = .center
         label.fontSize = 18
+        label.displayErrorInline = true
         return label
     }
 

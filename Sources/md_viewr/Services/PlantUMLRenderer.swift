@@ -39,7 +39,14 @@ enum PlantUMLError: LocalizedError {
 actor PlantUMLRenderer {
     static let shared = PlantUMLRenderer()
 
-    private var cache: [String: NSImage] = [:]
+    private var cache: [String: NSImage] = [:] {
+        didSet {
+            // Cap cache at 50 entries to prevent unbounded memory growth
+            if cache.count > 50 {
+                cache.removeAll()
+            }
+        }
+    }
     private var plantumlPath: String?
     private var checked = false
 
@@ -58,7 +65,6 @@ actor PlantUMLRenderer {
             throw PlantUMLError.notInstalled
         }
 
-        // Check cache
         let key = hashSource(source)
         if let cached = cache[key] {
             return cached
@@ -131,8 +137,7 @@ actor PlantUMLRenderer {
 
                     try process.run()
 
-                    // Write source to stdin and close
-                    let inputData = source.data(using: .utf8) ?? Data()
+                    let inputData = Data(source.utf8)
                     inputPipe.fileHandleForWriting.write(inputData)
                     inputPipe.fileHandleForWriting.closeFile()
 

@@ -33,7 +33,7 @@ final class FileWatcher {
 
     /// Debounce interval in seconds. Editors often write in multiple steps
     /// (e.g., vim does delete + create for atomic writes).
-    var debounceInterval: TimeInterval = 0.2
+    let debounceInterval: TimeInterval = 0.2
 
     func watch(url: URL) {
         stop()
@@ -67,25 +67,31 @@ final class FileWatcher {
             queue: .main
         )
 
+        // Source dispatches on .main, matching @MainActor isolation.
+        // MainActor.assumeIsolated proves this to the compiler.
         source?.setEventHandler { [weak self] in
-            guard let self else { return }
-            let event = self.source?.data ?? []
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let event = self.source?.data ?? []
 
-            if event.contains(.delete) || event.contains(.rename) {
-                // File was deleted or renamed (common with atomic-write editors).
-                // Stop watching the old descriptor and try to re-watch after a brief delay,
-                // since the editor may recreate the file.
-                self.restartAfterDelete()
-            } else {
-                self.debouncedNotify()
+                if event.contains(.delete) || event.contains(.rename) {
+                    // File was deleted or renamed (common with atomic-write editors).
+                    // Stop watching the old descriptor and try to re-watch after a brief delay,
+                    // since the editor may recreate the file.
+                    self.restartAfterDelete()
+                } else {
+                    self.debouncedNotify()
+                }
             }
         }
 
         source?.setCancelHandler { [weak self] in
-            guard let self else { return }
-            if self.fileDescriptor >= 0 {
-                close(self.fileDescriptor)
-                self.fileDescriptor = -1
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if self.fileDescriptor >= 0 {
+                    close(self.fileDescriptor)
+                    self.fileDescriptor = -1
+                }
             }
         }
 
@@ -95,7 +101,9 @@ final class FileWatcher {
     private func debouncedNotify() {
         debounceWorkItem?.cancel()
         let workItem = DispatchWorkItem { [weak self] in
-            self?.onChange?()
+            MainActor.assumeIsolated {
+                self?.onChange?()
+            }
         }
         debounceWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + debounceInterval, execute: workItem)
@@ -129,6 +137,7 @@ final class FileWatcher {
         }
     }
 
+    // Copy to locals because deinit cannot access @MainActor-isolated properties.
     deinit {
         let source = source
         let fd = fileDescriptor

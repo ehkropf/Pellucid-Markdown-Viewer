@@ -36,12 +36,9 @@ struct AppCommands: Commands {
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
 
-        let markdownTypes: [UTType] = [
-            UTType(filenameExtension: "md"),
-            UTType(filenameExtension: "markdown"),
-            UTType(filenameExtension: "mdown"),
-            UTType(filenameExtension: "mkd"),
-        ].compactMap { $0 }
+        let markdownTypes: [UTType] = markdownExtensions.compactMap {
+            UTType(filenameExtension: $0)
+        }
 
         panel.allowedContentTypes = markdownTypes
 

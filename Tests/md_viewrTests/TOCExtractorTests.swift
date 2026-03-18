@@ -124,6 +124,43 @@ final class TOCExtractorTests: XCTestCase {
         XCTAssertEqual(toc[0].title, "Bold Italic Text")
     }
 
+    func testAscendingLevelAfterDeepNesting() {
+        // H1 -> H3 -> H2: the H2 should pop back up as a child of H1
+        let toc = extractTOC("""
+        # Top
+        ### Deep
+        ## Mid
+        """)
+        XCTAssertEqual(toc.count, 1)
+        XCTAssertEqual(toc[0].children.count, 2)
+        XCTAssertEqual(toc[0].children[0].title, "Deep")
+        XCTAssertEqual(toc[0].children[0].level, 3)
+        XCTAssertEqual(toc[0].children[1].title, "Mid")
+        XCTAssertEqual(toc[0].children[1].level, 2)
+    }
+
+    func testDocumentStartingAtH3() {
+        // No H1 or H2 — all become top-level entries
+        let toc = extractTOC("""
+        ### First
+        ### Second
+        """)
+        XCTAssertEqual(toc.count, 2)
+        XCTAssertEqual(toc[0].title, "First")
+        XCTAssertEqual(toc[1].title, "Second")
+    }
+
+    func testHeadingWithLink() {
+        let toc = extractTOC("## [Link Text](https://example.com)")
+        XCTAssertEqual(toc[0].title, "Link Text")
+        XCTAssertEqual(toc[0].id, slugify("Link Text"))
+    }
+
+    func testHeadingWithStrikethrough() {
+        let toc = extractTOC("## ~~deleted~~ text")
+        XCTAssertEqual(toc[0].title, "deleted text")
+    }
+
     // MARK: - ID alignment with slugify
 
     func testIDMatchesSlugify() {

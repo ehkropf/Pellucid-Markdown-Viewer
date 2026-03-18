@@ -17,18 +17,29 @@
 import SwiftUI
 import AppKit
 
+/// Invisible NSViewRepresentable that captures the hosting NSWindow.
+/// Uses `viewDidMoveToWindow` for reliable window detection instead of
+/// a single-shot async dispatch that could miss the window.
 struct WindowAccessor: NSViewRepresentable {
     var onWindow: @MainActor (NSWindow) -> Void
 
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async {
-            if let window = view.window {
-                onWindow(window)
-            }
-        }
+    func makeNSView(context: Context) -> WindowCaptureView {
+        let view = WindowCaptureView()
+        view.onWindow = onWindow
         return view
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    func updateNSView(_ nsView: WindowCaptureView, context: Context) {}
+
+    final class WindowCaptureView: NSView {
+        var onWindow: (@MainActor (NSWindow) -> Void)?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let window {
+                onWindow?(window)
+                onWindow = nil
+            }
+        }
+    }
 }

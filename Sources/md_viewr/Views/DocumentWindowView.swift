@@ -16,6 +16,9 @@
 
 import SwiftUI
 
+/// Per-window wrapper that bridges WindowManager with ContentView.
+/// On appear: captures openWindowAction, registers the document, claims
+/// any queued URL, updates the file mapping, and drains pending URLs.
 struct DocumentWindowView: View {
     @StateObject private var document = MarkdownDocument()
     @Environment(WindowManager.self) private var windowManager
@@ -30,9 +33,7 @@ struct DocumentWindowView: View {
                 }
             }
             .onAppear {
-                if windowManager.openWindowAction == nil {
-                    windowManager.openWindowAction = openWindow
-                }
+                windowManager.captureOpenWindowAction(openWindow)
                 windowManager.register(document)
                 if let url = windowManager.claimQueuedURL() {
                     document.loadFile(url: url)

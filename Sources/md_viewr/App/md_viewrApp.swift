@@ -33,6 +33,7 @@ struct md_viewrApp: App {
     }
 }
 
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
@@ -41,7 +42,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Guard against duplicate instances when binary is run directly
+        // Guard against duplicate instances when the bare executable (not .app bundle)
+        // is launched, which can happen during development. Forward file args to the
+        // existing instance and quit.
         if let bundleID = Bundle.main.bundleIdentifier {
             let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
             if running.count > 1 {
@@ -59,25 +62,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        // Handle CLI file arguments
-        for arg in CommandLine.arguments.dropFirst() {
-            let resolved = Self.resolveFileArg(arg)
-            if FileManager.default.fileExists(atPath: resolved.path) {
-                DispatchQueue.main.async {
-                    WindowManager.shared.openFile(url: resolved)
-                }
+        let fileArgs = CommandLine.arguments.dropFirst().map { Self.resolveFileArg($0) }
+        let validFiles = fileArgs.filter { FileManager.default.fileExists(atPath: $0.path) }
+        let missingFiles = fileArgs.filter { !FileManager.default.fileExists(atPath: $0.path) }
+
+        for url in validFiles {
+            DispatchQueue.main.async {
+                WindowManager.shared.openFile(url: url)
+            }
+        }
+        for url in missingFiles {
+            DispatchQueue.main.async {
+                WindowManager.shared.reportError("File not found: \(url.path)")
             }
         }
     }
 
     private static func resolveFileArg(_ arg: String) -> URL {
-        let url: URL
-        if arg.hasPrefix("/") {
-            url = URL(fileURLWithPath: arg)
-        } else {
-            let cwd = FileManager.default.currentDirectoryPath
-            url = URL(fileURLWithPath: cwd).appendingPathComponent(arg)
-        }
-        return url.standardized
+        URL(fileURLWithPath: arg).standardized
     }
 }

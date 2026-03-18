@@ -15,6 +15,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
+import os.log
 
 /// Converts block-level `$$...$$` math delimiters to fenced ```math code blocks
 /// so the existing MathBlockView pipeline can render them.
@@ -62,7 +63,8 @@ func preprocessBlockMath(_ markdown: String) -> String {
 
     // Auto-close unclosed math block
     if case .insideBlockMath = state {
-        print("[MathPreprocessor] Warning: unclosed $$ block at end of document, auto-closing")
+        Logger(subsystem: "md_viewr", category: "MathPreprocessor")
+            .warning("Unclosed $$ block at end of document, auto-closing")
         result.append("```")
     }
 

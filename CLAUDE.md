@@ -22,7 +22,7 @@ Sources/md_viewr/
   Services/      — TOCExtractor, SyntaxHighlighter, PlantUMLRenderer, LocalImageProvider
   Utilities/     — Slugify, MathPreprocessor
 Tests/md_viewrTests/ — test target (logic tests only, no UI tests)
-Resources/       — Info.plist, AppIcon.{svg,png,icns}
+Resources/       — Info.plist, AppIcon.{svg,png,icns}, icon-philosophy.md
 scripts/         — build-app.sh, generate-icon.py
 ```
 
@@ -59,15 +59,19 @@ scripts/         — build-app.sh, generate-icon.py
 - Running bare executable (not .app bundle) causes window focus/z-order issues — always test with `build/md_viewr.app`
 - `NavigationSplitView` adds its own sidebar toggle — don't add a manual one
 - Window cleanup uses `NSWindow.willCloseNotification` (more reliable than `onDisappear` on macOS)
-- `WindowManager.openWindowAction` captured once from first window's environment — set only if nil
+- `WindowManager.openWindowAction` captured once from first window via `captureOpenWindowAction()` — idempotent, set-once
+- `WindowAccessor` uses `viewDidMoveToWindow` (not async dispatch) — reliable window capture for NSWindow registration
 - `build-app.sh` copies SwiftMath's `.bundle` resources — math rendering breaks without them
 - TOCExtractor uses `Heading.plainText` (custom extension) that must match MarkdownUI's `renderPlainText()`
+- FileWatcher DispatchSource handlers must use `MainActor.assumeIsolated` — source queue is `.main` but closures are non-isolated
+- `markdownExtensions` constant in Slugify.swift is shared by AppCommands and ContentView — keep in sync
 
 ## Testing
 
 - No TDD — unit tests for logic only
 - Visual acceptance testing via `test.md` (covers GFM, code blocks, math, PlantUML)
-- Test target has placeholder test; add logic tests as needed
+- 52 tests across 4 files: SlugifyTests, TOCExtractorTests, FileIdentityTests, MathPreprocessorTests
+- All tests use XCTest for framework consistency
 
 ## Code Style
 
@@ -75,6 +79,8 @@ scripts/         — build-app.sh, generate-icon.py
 - Use `Group` wrapper for conditional content in SwiftUI views
 - Keep view logic in the view file; business logic in Models/Services
 - Actor isolation for async services (e.g., `PlantUMLRenderer` is an `actor`)
+- `@MainActor` model classes should be `final` (`MarkdownDocument`, `WindowManager`, `FileWatcher`)
+- Use `os.Logger` for diagnostics, not `print()` (GUI app — stdout is invisible)
 
 ## License
 

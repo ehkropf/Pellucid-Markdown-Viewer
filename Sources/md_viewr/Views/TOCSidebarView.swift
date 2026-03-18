@@ -39,30 +39,16 @@ private struct TOCRootEntry: View {
 
     var body: some View {
         if entry.children.isEmpty {
-            tocButton(entry: entry)
+            TOCButton(entry: entry, selectedID: $selectedID)
         } else {
             Section(isExpanded: $isExpanded) {
                 ForEach(entry.children) { child in
                     TOCChildEntry(entry: child, selectedID: $selectedID)
                 }
             } header: {
-                tocButton(entry: entry)
+                TOCButton(entry: entry, selectedID: $selectedID)
             }
         }
-    }
-
-    @ViewBuilder
-    private func tocButton(entry: TOCEntry) -> some View {
-        Button(action: { selectedID = entry.id }) {
-            Text(entry.title)
-                .font(fontForLevel(entry.level))
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .tag(entry.id)
     }
 }
 
@@ -73,20 +59,24 @@ private struct TOCChildEntry: View {
 
     var body: some View {
         if entry.children.isEmpty {
-            tocButton(entry: entry)
+            TOCButton(entry: entry, selectedID: $selectedID)
         } else {
             DisclosureGroup {
                 ForEach(entry.children) { child in
                     TOCChildEntry(entry: child, selectedID: $selectedID)
                 }
             } label: {
-                tocButton(entry: entry)
+                TOCButton(entry: entry, selectedID: $selectedID)
             }
         }
     }
+}
 
-    @ViewBuilder
-    private func tocButton(entry: TOCEntry) -> some View {
+private struct TOCButton: View {
+    let entry: TOCEntry
+    @Binding var selectedID: String?
+
+    var body: some View {
         Button(action: { selectedID = entry.id }) {
             Text(entry.title)
                 .font(fontForLevel(entry.level))
@@ -104,7 +94,6 @@ private func fontForLevel(_ level: Int) -> Font {
     switch level {
     case 1: .system(size: 13, weight: .semibold)
     case 2: .system(size: 12, weight: .medium)
-    case 3: .system(size: 11, weight: .regular)
     default: .system(size: 11, weight: .regular)
     }
 }

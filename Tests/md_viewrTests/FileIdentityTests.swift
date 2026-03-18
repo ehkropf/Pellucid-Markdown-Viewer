@@ -14,21 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import Testing
-import Foundation
+import XCTest
 @testable import md_viewr
 
-struct FileIdentityTests {
-    @Test func tempFileHasIdentity() throws {
+final class FileIdentityTests: XCTestCase {
+    func testTempFileHasIdentity() throws {
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".md")
         try "# Test".write(to: tmp, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: tmp) }
 
-        let identity = FileIdentity(url: tmp)
-        #expect(identity != nil)
+        XCTAssertNotNil(FileIdentity(url: tmp))
     }
 
-    @Test func symlinkMatchesOriginal() throws {
+    func testSymlinkMatchesOriginal() throws {
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".md")
         let link = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "-link.md")
         try "# Test".write(to: tmp, atomically: true, encoding: .utf8)
@@ -40,10 +38,10 @@ struct FileIdentityTests {
 
         let id1 = FileIdentity(url: tmp)
         let id2 = FileIdentity(url: link)
-        #expect(id1 == id2)
+        XCTAssertEqual(id1, id2)
     }
 
-    @Test func differentFilesDiffer() throws {
+    func testDifferentFilesDiffer() throws {
         let tmp1 = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".md")
         let tmp2 = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".md")
         try "# One".write(to: tmp1, atomically: true, encoding: .utf8)
@@ -55,11 +53,27 @@ struct FileIdentityTests {
 
         let id1 = FileIdentity(url: tmp1)
         let id2 = FileIdentity(url: tmp2)
-        #expect(id1 != id2)
+        XCTAssertNotEqual(id1, id2)
     }
 
-    @Test func nonexistentReturnsNil() {
+    func testNonexistentReturnsNil() {
         let fake = URL(fileURLWithPath: "/tmp/\(UUID().uuidString)-does-not-exist.md")
-        #expect(FileIdentity(url: fake) == nil)
+        XCTAssertNil(FileIdentity(url: fake))
+    }
+
+    func testWorksAsDictionaryKey() throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".md")
+        try "# Test".write(to: tmp, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        let id1 = FileIdentity(url: tmp)!
+        let id2 = FileIdentity(url: tmp)!
+
+        var dict: [FileIdentity: String] = [:]
+        dict[id1] = "first"
+        dict[id2] = "second"
+
+        XCTAssertEqual(dict.count, 1, "Same file identity should overwrite in dictionary")
+        XCTAssertEqual(dict[id1], "second")
     }
 }

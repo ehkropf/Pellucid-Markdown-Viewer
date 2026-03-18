@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import Foundation
-
-struct TOCEntry: Identifiable, Equatable {
+struct TOCEntry: Identifiable, Equatable, Sendable {
     let id: String
     let level: Int
     let title: String
-    var children: [TOCEntry]
+    let children: [TOCEntry]
 }

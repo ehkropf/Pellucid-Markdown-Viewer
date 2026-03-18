@@ -16,6 +16,9 @@
 
 import Foundation
 
+/// Recognized markdown file extensions for Open panel and drag-drop validation.
+let markdownExtensions = ["md", "markdown", "mdown", "mkd"]
+
 /// Converts heading text to a kebab-cased anchor ID.
 /// Matches MarkdownUI's internal `String.kebabCased()` algorithm exactly,
 /// so TOC entry IDs align with the `.id()` MarkdownUI attaches to heading views.

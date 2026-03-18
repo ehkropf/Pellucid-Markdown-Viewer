@@ -39,22 +39,18 @@ struct AppCodeSyntaxHighlighter: CodeSyntaxHighlighter {
         var currentIndex = code.startIndex
 
         for token in sorted {
-            guard let tokenStart = Range(token.range, in: code) else { continue }
-            let range = tokenStart
+            guard let range = Range(token.range, in: code) else { continue }
 
-            // Add unstyled text before this token
             if currentIndex < range.lowerBound {
                 result = result + Text(code[currentIndex..<range.lowerBound])
             }
 
-            // Add styled token
             let tokenText = String(code[range])
             result = result + Text(tokenText).foregroundColor(color(for: token.kind))
 
             currentIndex = range.upperBound
         }
 
-        // Add remaining unstyled text
         if currentIndex < code.endIndex {
             result = result + Text(code[currentIndex...])
         }
@@ -97,6 +93,7 @@ private func tokenize(code: String, grammar: Grammar) -> [Token] {
     // Process patterns in priority order (comments/strings first to avoid conflicts)
     for (pattern, kind) in grammar.patterns {
         guard let regex = try? NSRegularExpression(pattern: pattern, options: grammar.options) else {
+            assertionFailure("[SyntaxHighlighter] Invalid regex pattern: \(pattern)")
             continue
         }
         let nsRange = NSRange(code.startIndex..., in: code)
@@ -117,6 +114,8 @@ private func tokenize(code: String, grammar: Grammar) -> [Token] {
 
 // MARK: - Language grammars
 
+/// Patterns are matched in declaration order; earlier patterns take priority
+/// when ranges overlap (e.g., comments and strings should come first).
 private struct Grammar {
     let patterns: [(String, TokenKind)]
     var options: NSRegularExpression.Options = []
