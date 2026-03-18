@@ -10,8 +10,6 @@
 	<string>md_viewr</string>
 	<key>CFBundleDisplayName</key>
 	<string>md_viewr</string>
-	<key>CFBundleVersion</key>
-	<string>2</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0.1</string>
 	<key>CFBundlePackageType</key>
