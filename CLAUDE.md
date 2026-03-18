@@ -15,13 +15,13 @@ Native macOS markdown viewer. Swift 6 + SwiftUI, macOS 14+. No JavaScript. No Xc
 ## Architecture
 
 ```
-md_viewr/
+Sources/md_viewr/
   App/           — @main entry point (md_viewrApp), menu commands (AppCommands)
   Models/        — MarkdownDocument, WindowManager, FileIdentity, TOCEntry, FileWatcher
   Views/         — DocumentWindowView, ContentView, WindowAccessor, TOCSidebarView, MathBlockView, DiagramBlockView
   Services/      — TOCExtractor, SyntaxHighlighter, PlantUMLRenderer, LocalImageProvider
   Utilities/     — Slugify, MathPreprocessor
-md_viewrTests/   — test target (logic tests only, no UI tests)
+Tests/md_viewrTests/ — test target (logic tests only, no UI tests)
 Resources/       — Info.plist, AppIcon.{svg,png,icns}
 scripts/         — build-app.sh, generate-icon.py
 ```

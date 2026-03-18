@@ -35,16 +35,14 @@ let package = Package(
                 .product(name: "Markdown", package: "swift-markdown"),
                 .product(name: "MarkdownUI", package: "swift-markdown-ui"),
                 .product(name: "SwiftMath", package: "SwiftMath"),
-            ],
-            path: "md_viewr"
+            ]
         ),
         .testTarget(
             name: "md_viewrTests",
             dependencies: [
                 "md_viewr",
                 .product(name: "Markdown", package: "swift-markdown"),
-            ],
-            path: "md_viewrTests"
+            ]
         ),
     ]
 )
