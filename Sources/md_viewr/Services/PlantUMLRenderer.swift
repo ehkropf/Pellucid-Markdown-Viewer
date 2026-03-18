@@ -131,6 +131,10 @@ actor PlantUMLRenderer {
                     // -pipe: read from stdin, write to stdout
                     // -tsvg: output SVG for crisp rendering at any scale
                     process.arguments = ["-pipe", "-tsvg"]
+                    // Run Java headless to prevent AWT from stealing app focus
+                    var env = ProcessInfo.processInfo.environment
+                    env["JAVA_TOOL_OPTIONS"] = "-Djava.awt.headless=true"
+                    process.environment = env
                     process.standardInput = inputPipe
                     process.standardOutput = outputPipe
                     process.standardError = errorPipe
