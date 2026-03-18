@@ -55,6 +55,7 @@ scripts/         — build-app.sh, generate-icon.py
 
 ## Gotchas
 
+- `build-app.sh` ad-hoc signs the .app bundle (`codesign --sign -`) — gives the soft "downloaded from internet" dialog instead of Gatekeeper hard block
 - Running bare executable (not .app bundle) causes window focus/z-order issues — always test with `build/md_viewr.app`
 - `NavigationSplitView` adds its own sidebar toggle — don't add a manual one
 - Window cleanup uses `NSWindow.willCloseNotification` (more reliable than `onDisappear` on macOS)
