@@ -65,12 +65,13 @@ scripts/         — build-app.sh, generate-icon.py
 - TOCExtractor uses `Heading.plainText` (custom extension) that must match MarkdownUI's `renderPlainText()`
 - FileWatcher DispatchSource handlers must use `MainActor.assumeIsolated` — source queue is `.main` but closures are non-isolated
 - `markdownExtensions` constant in Slugify.swift is shared by AppCommands and ContentView — keep in sync
+- PlantUML subprocess sets `JAVA_TOOL_OPTIONS=-Djava.awt.headless=true` — without this, Java's AWT steals app focus
 
 ## Testing
 
 - No TDD — unit tests for logic only
 - Visual acceptance testing via `test.md` (covers GFM, code blocks, math, PlantUML)
-- 52 tests across 4 files: SlugifyTests, TOCExtractorTests, FileIdentityTests, MathPreprocessorTests
+- Tests across 4 files: SlugifyTests, TOCExtractorTests, FileIdentityTests, MathPreprocessorTests
 - All tests use XCTest for framework consistency
 
 ## Code Style
