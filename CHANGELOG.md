@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.0.2 — 2026-03-22
 
-- Redisigned app icon
+- Redesigned app icon
 - Render images at actual size instead of stretching to fill
 - Coalescing file watcher events (replaces debounce, catches missed writes)
 - Copyright and license in About box
