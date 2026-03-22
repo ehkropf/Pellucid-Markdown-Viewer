@@ -22,7 +22,8 @@ import Foundation
 final class FileWatcher {
     private var source: DispatchSourceFileSystemObject?
     private var fileDescriptor: Int32 = -1
-    private var debounceWorkItem: DispatchWorkItem?
+    private var coalesceTimer: DispatchWorkItem?
+    private var lastModTime: Date?
     private var watchedURL: URL?
 
     /// Called on the main queue when the file changes.
@@ -31,9 +32,12 @@ final class FileWatcher {
     /// Called when the watcher fails to attach or loses contact with the file.
     var onWatchFailed: ((_ reason: String) -> Void)?
 
-    /// Debounce interval in seconds. Editors often write in multiple steps
-    /// (e.g., vim does delete + create for atomic writes).
-    let debounceInterval: TimeInterval = 0.2
+    /// How long to wait after the first event before processing.
+    /// Editors often write in multiple steps (e.g., vim does delete + create).
+    let coalesceInterval: TimeInterval = 0.2
+
+    /// Delay for the verification pass that catches missed events.
+    let verifyInterval: TimeInterval = 0.3
 
     func watch(url: URL) {
         stop()
@@ -42,14 +46,15 @@ final class FileWatcher {
     }
 
     func stop() {
-        debounceWorkItem?.cancel()
-        debounceWorkItem = nil
+        coalesceTimer?.cancel()
+        coalesceTimer = nil
         source?.cancel()
         source = nil
         if fileDescriptor >= 0 {
             close(fileDescriptor)
             fileDescriptor = -1
         }
+        lastModTime = nil
         watchedURL = nil
     }
 
@@ -80,7 +85,7 @@ final class FileWatcher {
                     // since the editor may recreate the file.
                     self.restartAfterDelete()
                 } else {
-                    self.debouncedNotify()
+                    self.coalesceNotify()
                 }
             }
         }
@@ -98,15 +103,47 @@ final class FileWatcher {
         source?.resume()
     }
 
-    private func debouncedNotify() {
-        debounceWorkItem?.cancel()
+    /// Coalesce events: start a timer on the first event, let subsequent
+    /// events accumulate, then process once. A verification pass afterwards
+    /// catches any writes that DispatchSource failed to deliver.
+    private func coalesceNotify() {
+        // If a timer is already running, it will pick up this change — don't restart it
+        guard coalesceTimer == nil else { return }
+
         let workItem = DispatchWorkItem { [weak self] in
             MainActor.assumeIsolated {
-                self?.onChange?()
+                guard let self, let url = self.watchedURL else { return }
+                self.coalesceTimer = nil
+                let currentModTime = self.modificationDate(of: url)
+                if currentModTime != self.lastModTime {
+                    self.lastModTime = currentModTime
+                    self.onChange?()
+                }
+                // Schedule a verification pass to catch any trailing writes
+                self.scheduleVerification()
             }
         }
-        debounceWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + debounceInterval, execute: workItem)
+        coalesceTimer = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + coalesceInterval, execute: workItem)
+    }
+
+    /// Follow-up check using file modification time — catches events that
+    /// DispatchSource coalesced away or failed to deliver.
+    private func scheduleVerification() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + verifyInterval) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, let url = self.watchedURL else { return }
+                let currentModTime = self.modificationDate(of: url)
+                if currentModTime != self.lastModTime {
+                    self.lastModTime = currentModTime
+                    self.onChange?()
+                }
+            }
+        }
+    }
+
+    private func modificationDate(of url: URL) -> Date? {
+        try? FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as? Date
     }
 
     /// After a delete/rename, close the old descriptor and attempt to re-open.
@@ -127,7 +164,7 @@ final class FileWatcher {
         let maxAttempts = 5
         if FileManager.default.fileExists(atPath: url.path) {
             startWatching(url: url)
-            debouncedNotify()
+            coalesceNotify()
         } else if attempt < maxAttempts {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                 self?.tryReopen(url: url, attempt: attempt + 1)

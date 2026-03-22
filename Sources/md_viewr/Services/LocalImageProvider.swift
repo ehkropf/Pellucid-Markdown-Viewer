@@ -26,8 +26,7 @@ struct LocalImageProvider: ImageProvider, Sendable {
         if let url, url.isFileURL {
             if let nsImage = NSImage(contentsOf: url) {
                 Image(nsImage: nsImage)
-                    .resizable()
-                    .scaledToFit()
+                    .frame(width: nsImage.size.width, height: nsImage.size.height)
             } else {
                 Label(url.lastPathComponent, systemImage: "photo.badge.exclamationmark")
                     .foregroundStyle(.secondary)

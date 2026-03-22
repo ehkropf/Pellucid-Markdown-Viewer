@@ -20,6 +20,8 @@
 	<string>14.0</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2026 Everett Kropf. Licensed under GPL-3.0-or-later.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSSupportsAutomaticTermination</key>

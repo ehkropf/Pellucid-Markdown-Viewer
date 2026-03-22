@@ -1,6 +1,8 @@
 # md_viewr
 
-A native macOS markdown viewer built with Swift and SwiftUI. No web views, no JavaScript — just fast, native rendering.
+![App icon](screenshots/AppIcon.png)
+
+A native macOS markdown viewer built with Swift and SwiftUI. No web views, no JavaScript, no Electron — just fast, native rendering that feels like a first-class Mac app. md_viewr is a viewer, not an editor. Open a markdown file, see it rendered beautifully, and let your editor of choice handle the writing while md_viewr live-reloads on every save.
 
 <p align="center">
   <img src="screenshots/empty-state.png" width="45%" alt="Empty state" />
@@ -16,6 +18,19 @@ A native macOS markdown viewer built with Swift and SwiftUI. No web views, no Ja
 - **LaTeX math** — native rendering via SwiftMath (no MathJax/KaTeX)
 - **PlantUML diagrams** — rendered via CLI subprocess as SVG
 - **Multiple open methods** — File > Open, drag-and-drop, CLI argument, or registered `.md` file handler
+
+### Supported Markdown
+
+- Headings, paragraphs, blockquotes, horizontal rules
+- **Bold**, *italic*, ~~strikethrough~~
+- Links and images (rendered at actual size)
+- Ordered, unordered, and task lists
+- Tables
+- Fenced code blocks with syntax highlighting (~20 languages)
+- LaTeX math via `math`/`latex` code blocks
+- PlantUML diagrams via `plantuml` code blocks
+
+See [`test.md`](test.md) for rendered examples of everything supported.
 
 ## Requirements
 
