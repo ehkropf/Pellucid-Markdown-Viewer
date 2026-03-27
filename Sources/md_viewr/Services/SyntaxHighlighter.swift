@@ -20,6 +20,8 @@ import MarkdownUI
 /// Regex-based syntax highlighter that covers common token types.
 /// Produces styled SwiftUI Text for use with MarkdownUI's CodeSyntaxHighlighter protocol.
 struct AppCodeSyntaxHighlighter: CodeSyntaxHighlighter {
+    let palette: SyntaxColorPalette
+
     func highlightCode(_ code: String, language: String?) -> Text {
         guard let language = language?.lowercased(),
               let grammar = grammars[language]
@@ -60,15 +62,15 @@ struct AppCodeSyntaxHighlighter: CodeSyntaxHighlighter {
 
     private func color(for kind: TokenKind) -> Color {
         switch kind {
-        case .keyword: .purple
-        case .string: .red
-        case .comment: .gray
-        case .number: .blue
-        case .type: .teal
-        case .function: .blue
-        case .operator_: .secondary
-        case .attribute: .orange
-        case .constant: .purple
+        case .keyword: palette.keyword
+        case .string: palette.string
+        case .comment: palette.comment
+        case .number: palette.number
+        case .type: palette.type
+        case .function: palette.function
+        case .operator_: palette.operator_
+        case .attribute: palette.attribute
+        case .constant: palette.constant
         }
     }
 }
@@ -322,5 +324,5 @@ private let cppGrammar = Grammar(patterns: [
 // MARK: - MarkdownUI integration
 
 extension CodeSyntaxHighlighter where Self == AppCodeSyntaxHighlighter {
-    static var app: Self { AppCodeSyntaxHighlighter() }
+    static var app: Self { AppCodeSyntaxHighlighter(palette: .default) }
 }

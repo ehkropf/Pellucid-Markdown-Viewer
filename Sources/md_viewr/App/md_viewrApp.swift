@@ -24,9 +24,10 @@ struct md_viewrApp: App {
         WindowGroup(id: "viewer") {
             DocumentWindowView()
                 .environment(WindowManager.shared)
+                .environment(ThemeManager.shared)
         }
         .commands {
-            AppCommands(windowManager: WindowManager.shared)
+            AppCommands(windowManager: WindowManager.shared, themeManager: ThemeManager.shared)
         }
         .defaultSize(width: 900, height: 700)
         .windowToolbarStyle(.unified)

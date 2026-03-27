@@ -19,6 +19,9 @@ import UniformTypeIdentifiers
 
 struct AppCommands: Commands {
     let windowManager: WindowManager
+    let themeManager: ThemeManager
+
+    @FocusedValue(\.rawMarkdown) var rawMarkdown
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -26,6 +29,27 @@ struct AppCommands: Commands {
                 openFile()
             }
             .keyboardShortcut("o", modifiers: .command)
+        }
+
+        CommandGroup(after: .pasteboard) {
+            Divider()
+            Button("Copy All") {
+                copyToClipboard(rawMarkdown ?? "")
+            }
+            .keyboardShortcut("c", modifiers: [.command, .shift])
+            .disabled(rawMarkdown == nil || rawMarkdown!.isEmpty)
+        }
+
+        CommandGroup(after: .sidebar) {
+            Divider()
+            Picker("Theme", selection: Binding(
+                get: { themeManager.selectedTheme },
+                set: { themeManager.selectedTheme = $0 }
+            )) {
+                ForEach(AppTheme.allCases, id: \.self) { theme in
+                    Text(theme.displayName).tag(theme)
+                }
+            }
         }
 
         SidebarCommands()
@@ -47,5 +71,11 @@ struct AppCommands: Commands {
                 windowManager.openFile(url: url)
             }
         }
+    }
+
+    private func copyToClipboard(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
     }
 }

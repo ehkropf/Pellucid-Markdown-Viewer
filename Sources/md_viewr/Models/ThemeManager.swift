@@ -15,27 +15,19 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import SwiftUI
-import SwiftMath
 
-/// Renders a LaTeX math expression using SwiftMath (Core Graphics, no JS).
-/// SwiftMath displays parse errors inline via `displayErrorInline` (default: true).
-struct MathBlockView: NSViewRepresentable {
-    let latex: String
-    var textColor: NSColor = .textColor
+@MainActor @Observable
+final class ThemeManager {
+    static let shared = ThemeManager()
 
-    func makeNSView(context: Context) -> MTMathUILabel {
-        let label = MTMathUILabel()
-        label.latex = latex
-        label.labelMode = .display
-        label.textAlignment = .center
-        label.fontSize = 18
-        label.displayErrorInline = true
-        label.textColor = textColor
-        return label
+    var selectedTheme: AppTheme {
+        didSet {
+            UserDefaults.standard.set(selectedTheme.rawValue, forKey: "selectedTheme")
+        }
     }
 
-    func updateNSView(_ label: MTMathUILabel, context: Context) {
-        label.latex = latex
-        label.textColor = textColor
+    private init() {
+        let stored = UserDefaults.standard.string(forKey: "selectedTheme") ?? AppTheme.default.rawValue
+        selectedTheme = AppTheme(rawValue: stored) ?? .default
     }
 }

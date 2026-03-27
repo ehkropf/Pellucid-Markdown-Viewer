@@ -17,9 +17,21 @@
 import SwiftUI
 import MarkdownUI
 
+struct RawMarkdownKey: FocusedValueKey {
+    typealias Value = String
+}
+
+extension FocusedValues {
+    var rawMarkdown: String? {
+        get { self[RawMarkdownKey.self] }
+        set { self[RawMarkdownKey.self] = newValue }
+    }
+}
+
 struct ContentView: View {
     @EnvironmentObject var document: MarkdownDocument
     @Environment(WindowManager.self) private var windowManager
+    @Environment(ThemeManager.self) private var themeManager
     @State private var selectedHeadingID: String?
     @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
     /// Guards against onChange(of: columnVisibility) firing during onAppear
@@ -91,18 +103,20 @@ struct ContentView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         MarkdownUI.Markdown(document.processedMarkdown, imageBaseURL: document.fileURL?.deletingLastPathComponent())
-                            .markdownCodeSyntaxHighlighter(.app)
+                            .markdownCodeSyntaxHighlighter(AppCodeSyntaxHighlighter(palette: themeManager.selectedTheme.syntaxColors))
                             .markdownBlockStyle(\.codeBlock) { configuration in
                                 codeBlockView(configuration: configuration)
                             }
                             .markdownImageProvider(.local)
-                            .markdownTheme(.gitHub)
+                            .markdownTheme(themeManager.selectedTheme.markdownTheme)
                             .padding(.horizontal, 32)
                             .padding(.vertical, 24)
                             .frame(maxWidth: 860, alignment: .leading)
                             .frame(maxWidth: .infinity)
                             .textSelection(.enabled)
                     }
+                    .background(themeManager.selectedTheme.windowBackground ?? Color(.windowBackgroundColor))
+                    .focusedSceneValue(\.rawMarkdown, document.rawMarkdown)
                     .onChange(of: selectedHeadingID) { _, newValue in
                         if let id = newValue {
                             withAnimation {
@@ -151,7 +165,7 @@ struct ContentView: View {
     private func codeBlockView(configuration: CodeBlockConfiguration) -> some View {
         let lang = configuration.language?.lowercased()
         if lang == "math" || lang == "latex" {
-            MathBlockView(latex: configuration.content.trimmingCharacters(in: .whitespacesAndNewlines))
+            MathBlockView(latex: configuration.content.trimmingCharacters(in: .whitespacesAndNewlines), textColor: themeManager.selectedTheme.mathTextColor)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .markdownMargin(top: .em(0.8), bottom: .em(0.8))
@@ -165,7 +179,7 @@ struct ContentView: View {
                     FontSize(.em(0.85))
                 }
                 .padding(16)
-                .background(Color(.textBackgroundColor).opacity(0.5))
+                .background(themeManager.selectedTheme.codeBlockBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .markdownMargin(top: .zero, bottom: .em(0.8))
         }
