@@ -20,7 +20,7 @@ Sources/Pellucid/
   Models/        — MarkdownDocument, WindowManager, FileIdentity, TOCEntry, FileWatcher, ThemeManager, AppTheme, SolarizedColors, Theme+Solarized
   Views/         — DocumentWindowView, ContentView, WindowAccessor, TOCSidebarView, MathBlockView, DiagramBlockView
   Services/      — TOCExtractor, SyntaxHighlighter, PlantUMLRenderer, LocalImageProvider
-  Utilities/     — Slugify, MathPreprocessor
+  Utilities/     — Slugify, MathPreprocessor, Clipboard
 Tests/PellucidTests/ — test target (logic tests only, no UI tests)
 Resources/       — Info.plist, AppIcon.{svg,png,icns}, icon-philosophy.md
 scripts/         — build-app.sh, generate-icon.py
@@ -39,6 +39,8 @@ scripts/         — build-app.sh, generate-icon.py
 - Sidebar visibility persisted via `@SceneStorage` string bridge with race-safe restore guard (`didRestoreState`)
 - `ThemeManager` (`@MainActor @Observable` singleton) manages app-wide theme (Default, Solarized) via `AppTheme` enum; system appearance drives light/dark
 - `MathPreprocessor` converts `$$...$$` block delimiters to fenced ```math blocks before parsing
+- `TOCExtractor.extractSection` slices raw markdown by heading line offsets for "Copy Section"; `TOCEntry.lineOffset` stores 0-based source line
+- `copyToClipboard()` (Utilities/Clipboard.swift) writes to `NSPasteboard` and posts `.didCopyToClipboard` notification; ContentView shows a toast overlay on receive
 
 ## Key Constraints
 
@@ -72,6 +74,7 @@ scripts/         — build-app.sh, generate-icon.py
 - `LocalImageProvider` uses `maxWidth`/`maxHeight` (not fixed `width`/`height`) — images scale down to fit content area but never upscale
 - `DiagramBlockView` adds white background behind PlantUML diagrams in dark mode — no re-rendering needed, pure view styling
 - `@Environment(\.colorScheme)` does NOT propagate into MarkdownUI block style closures — pass values explicitly or use environment in standalone views like `DiagramBlockView`
+- `.textSelection(.enabled)` only works within individual `Text` views — MarkdownUI renders each block as a separate `Text`, so cross-block drag-select doesn't work; Cmd+A and "Copy Section" are workarounds until NSTextView-based rendering replaces MarkdownUI
 
 ## Testing
 
