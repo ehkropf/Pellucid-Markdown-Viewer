@@ -5,6 +5,7 @@
 - Rename app from md_viewr to Pellucid
 - Theming system with Default, Solarized Light, and Solarized Dark themes
 - Copy All (⌘⇧C) menu item to copy raw markdown to clipboard
+- Fix sidebar getting pushed off-screen during horizontal window resize
 
 ## 1.0.2 — 2026-03-22
 

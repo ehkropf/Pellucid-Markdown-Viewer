@@ -45,7 +45,9 @@ struct ContentView: View {
                 .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 300)
         } detail: {
             detail
+                .navigationSplitViewColumnWidth(min: 400, ideal: 600)
         }
+        .navigationSplitViewStyle(.balanced)
         .navigationTitle(document.fileName)
         .navigationSubtitle(document.fileURL?.deletingLastPathComponent().path ?? "")
         .frame(minWidth: 600, minHeight: 400)

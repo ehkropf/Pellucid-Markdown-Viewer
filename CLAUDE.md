@@ -17,7 +17,7 @@ Native macOS markdown viewer. Swift 6 + SwiftUI, macOS 14+. No JavaScript. No Xc
 ```
 Sources/Pellucid/
   App/           — @main entry point (PellucidApp), menu commands (AppCommands)
-  Models/        — MarkdownDocument, WindowManager, FileIdentity, TOCEntry, FileWatcher
+  Models/        — MarkdownDocument, WindowManager, FileIdentity, TOCEntry, FileWatcher, ThemeManager, AppTheme, SolarizedColors, Theme+Solarized
   Views/         — DocumentWindowView, ContentView, WindowAccessor, TOCSidebarView, MathBlockView, DiagramBlockView
   Services/      — TOCExtractor, SyntaxHighlighter, PlantUMLRenderer, LocalImageProvider
   Utilities/     — Slugify, MathPreprocessor
@@ -37,6 +37,8 @@ scripts/         — build-app.sh, generate-icon.py
 - `ScrollViewReader` handles click-to-scroll from TOC to heading
 - FileWatcher uses `DispatchSource` with 200ms debounce; handles atomic writes (delete+recreate)
 - Sidebar visibility persisted via `@SceneStorage` string bridge with race-safe restore guard (`didRestoreState`)
+- `ThemeManager` (`@MainActor @Observable` singleton) manages app-wide theme (Default, Solarized Light, Solarized Dark) via `AppTheme` enum
+- `MathPreprocessor` converts `$$...$$` block delimiters to fenced ```math blocks before parsing
 
 ## Key Constraints
 
