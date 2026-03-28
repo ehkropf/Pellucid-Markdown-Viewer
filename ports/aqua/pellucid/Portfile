@@ -18,9 +18,9 @@ long_description    Pellucid is a native macOS markdown viewer built with \
 
 platforms           {darwin >= 23}
 
-checksums           rmd160  PLACEHOLDER \
-                    sha256  PLACEHOLDER \
-                    size    PLACEHOLDER
+checksums           rmd160  18917fd282fdd9f61dc2ae990feb8f830951d84a \
+                    sha256  460bac2460eeacdc9b7ea0ec80884fdefb61d2a06089028d198fad736aa2a45d \
+                    size    3208283
 
 # Swift toolchain — requires Xcode or Command Line Tools
 # No MacPorts swift dependency needed; SPM uses system toolchain
