@@ -64,11 +64,10 @@ Requires [MacPorts](https://www.macports.org) and Xcode Command Line Tools.
 
 ```bash
 git clone https://github.com/ehkropf/Pellucid-Markdown-Viewer.git
-cd Pellucid-Markdown-Viewer
-sudo port -D ports/aqua/pellucid install pellucid
+sudo port install Pellucid-Markdown-Viewer/ports/aqua/pellucid
 
 # Or with PlantUML diagram support:
-sudo port -D ports/aqua/pellucid install pellucid +plantuml
+sudo port install Pellucid-Markdown-Viewer/ports/aqua/pellucid +plantuml
 ```
 
 The app installs to `/Applications/MacPorts/Pellucid.app`.

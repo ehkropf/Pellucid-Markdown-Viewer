@@ -18,6 +18,7 @@ Native macOS markdown viewer. Swift 6 + SwiftUI, macOS 14+. No JavaScript. No Xc
 - `make portindex` — regenerates PortIndex after Portfile changes
 - `make checksums VERSION=x.y.z` — computes checksums from GitHub release tarball
 - Release workflow: tag → GitHub release → update checksums in Portfile → `make portindex` → commit
+- `sudo port install ports/aqua/pellucid` — install directly from repo (relative path works)
 - App installs to `/Applications/MacPorts/Pellucid.app`
 - `+plantuml` variant adds optional PlantUML runtime dependency
 
@@ -28,8 +29,8 @@ Sources/Pellucid/
   App/           — @main entry point (PellucidApp), menu commands (AppCommands)
   Models/        — MarkdownDocument, WindowManager, FileIdentity, TOCEntry, FileWatcher, ThemeManager, AppTheme, SolarizedColors, Theme+Solarized
   Views/         — DocumentWindowView, ContentView, WindowAccessor, TOCSidebarView, MathBlockView, DiagramBlockView
-  Services/      — TOCExtractor, SyntaxHighlighter, PlantUMLRenderer, LocalImageProvider
-  Utilities/     — Slugify, MathPreprocessor, Clipboard
+  Services/      — TOCExtractor, SyntaxHighlighter, PlantUMLRenderer, LocalImageProvider, ExternalEditor, SourceLocationMap
+  Utilities/     — Slugify, MathPreprocessor, Clipboard, ExecutableFinder
 Tests/PellucidTests/ — test target (logic tests only, no UI tests)
 Resources/       — Info.plist, AppIcon.{svg,png,icns}, icon-philosophy.md
 ports/           — MacPorts custom port source (Portfile + PortIndex)
@@ -85,12 +86,14 @@ scripts/         — generate-icon.py, update-portfile-checksums.sh
 - `DiagramBlockView` adds white background behind PlantUML diagrams in dark mode — no re-rendering needed, pure view styling
 - `@Environment(\.colorScheme)` does NOT propagate into MarkdownUI block style closures — pass values explicitly or use environment in standalone views like `DiagramBlockView`
 - `.textSelection(.enabled)` only works within individual `Text` views — MarkdownUI renders each block as a separate `Text`, so cross-block drag-select doesn't work; Cmd+A and "Copy Section" are workarounds until NSTextView-based rendering replaces MarkdownUI
+- ContentView's `markdownContent` must stay extracted as a separate `@ViewBuilder` property — inlining it causes Swift type-checker timeout on clean builds
+- MacPorts Portfile requires `--disable-sandbox` (SPM sandbox conflicts with MacPorts sandbox) and `--cache-path` (build user can't write to default SPM cache)
 
 ## Testing
 
 - No TDD — unit tests for logic only
 - Visual acceptance testing via `test.md` (covers GFM, code blocks, math, PlantUML)
-- Tests across 4 files: SlugifyTests, TOCExtractorTests, FileIdentityTests, MathPreprocessorTests
+- Tests across 6 files: SlugifyTests, TOCExtractorTests, FileIdentityTests, MathPreprocessorTests, ExecutableFinderTests, SourceLocationMapTests
 - All tests use XCTest for framework consistency
 
 ## Code Style
