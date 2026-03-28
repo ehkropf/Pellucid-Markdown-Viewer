@@ -9,11 +9,11 @@ Cmd+click on any rendered block in the markdown viewer opens the source file at 
 A `MarkupWalker` that extracts block content → source line number mappings from the swift-markdown AST. Built alongside the TOC in `MarkdownDocument.reloadFile()`.
 
 Each entry is `(blockType: SourceBlockType, contentKey: String, line: Int)`:
-- `blockType`: enum — `.heading`, `.paragraph`, `.codeBlock`, `.blockquote`, `.listItem`, `.table`
+- `blockType`: enum — `.heading`, `.paragraph`, `.codeBlock`, `.blockquote`, `.listItem`, `.table`, `.thematicBreak`
 - `contentKey`: plain text or raw content of the block, truncated to 200 characters for large blocks
 - `line`: 1-based source line number from `heading.range?.lowerBound.line`
 
-Lookup: `sourceLine(for blockType: SourceBlockType, contentKey: String) -> Int?` returns the first matching entry's line number.
+Lookup: `sourceLine(for blockType: SourceBlockType, contentKey: String) -> Int?` returns the first matching entry's line number. If no exact match is found, falls back to the nearest preceding entry's line number (any block type). Returns line 1 in the limit (nothing above).
 
 File: `Sources/Pellucid/Services/SourceLocationMap.swift`
 
@@ -75,9 +75,10 @@ Block types wired:
 - **List items** (`.listItem`): content key is rendered plain text, truncated
 - **Tables** (`.table`): content key is first cell content, truncated
 
-Not wired (no block style available or no meaningful content key):
-- **Images**: handled via `ImageProvider`, not block styles — no `.markdownBlockStyle(\.image)` exists
-- **Thematic breaks**: no content to match on
+- **Thematic breaks** (`.thematicBreak`): content key is the occurrence index (e.g., `"0"`, `"1"`) since there's no text content. SourceLocationMap walker counts thematic breaks in order; gesture handler counts occurrences to build the matching key.
+
+Not wired:
+- **Images**: `![alt](path)` is inline content within paragraphs — Cmd+clicking the paragraph containing an image jumps to that paragraph's source line, which is at or near the image. No separate block style exists for images.
 
 `configuration.label` preserves the theme's rendering — we don't reimplement any styles. The `.id()` that MarkdownUI attaches to headings for TOC scroll should be preserved since it's part of the already-rendered label.
 
@@ -116,6 +117,6 @@ sourceLocationMap = SourceLocationMap.extract(from: document)
 
 ## Testing
 
-- **SourceLocationMap**: tests for all block types — headings, paragraphs, code blocks, blockquotes, list items, tables. Verify content keys and line numbers.
+- **SourceLocationMap**: tests for all block types — headings, paragraphs, code blocks, blockquotes, list items, tables, thematic breaks. Verify content keys, line numbers, and nearest-preceding fallback.
 - **ExecutableFinder**: test `which` resolution and fallback path checking
 - No UI tests (per project convention)
