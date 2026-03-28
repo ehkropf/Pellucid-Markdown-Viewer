@@ -113,45 +113,7 @@ struct ContentView: View {
                 } else if document.rawMarkdown.isEmpty {
                     emptyState
                 } else {
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            MarkdownUI.Markdown(document.processedMarkdown, imageBaseURL: document.fileURL?.deletingLastPathComponent())
-                                .markdownCodeSyntaxHighlighter(AppCodeSyntaxHighlighter(palette: themeManager.selectedTheme.syntaxColors(isDark: isDark)))
-                                .markdownBlockStyle(\.codeBlock) { configuration in
-                                    codeBlockView(configuration: configuration)
-                                }
-                                .markdownBlockStyle(\.heading1) { c in headingJumpGesture(c) }
-                                .markdownBlockStyle(\.heading2) { c in headingJumpGesture(c) }
-                                .markdownBlockStyle(\.heading3) { c in headingJumpGesture(c) }
-                                .markdownBlockStyle(\.heading4) { c in headingJumpGesture(c) }
-                                .markdownBlockStyle(\.heading5) { c in headingJumpGesture(c) }
-                                .markdownBlockStyle(\.heading6) { c in headingJumpGesture(c) }
-                                .markdownBlockStyle(\.paragraph) { c in blockJumpGesture(c, blockType: .paragraph) }
-                                .markdownBlockStyle(\.blockquote) { c in blockJumpGesture(c, blockType: .blockquote) }
-                                .markdownBlockStyle(\.listItem) { c in blockJumpGesture(c, blockType: .listItem) }
-                                .markdownBlockStyle(\.table) { c in blockJumpGesture(c, blockType: .table) }
-                                .markdownImageProvider(.local)
-                                .markdownTheme(themeManager.selectedTheme.markdownTheme(isDark: isDark))
-                                .padding(.horizontal, 32)
-                                .padding(.vertical, 24)
-                                .frame(maxWidth: 860, alignment: .leading)
-                                .frame(maxWidth: .infinity)
-                                .textSelection(.enabled)
-                        }
-                        .background(themeManager.selectedTheme.windowBackground(isDark: isDark) ?? Color(.windowBackgroundColor))
-                        .focusedSceneValue(\.rawMarkdown, document.rawMarkdown)
-                        .onChange(of: selectedHeadingID) { _, newValue in
-                            if let id = newValue {
-                                withAnimation {
-                                    proxy.scrollTo(id, anchor: .top)
-                                }
-                                // Clear selection after scroll animation so the same heading can be re-selected
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                    selectedHeadingID = nil
-                                }
-                            }
-                        }
-                    }
+                    markdownScrollView
                 }
             }
 
@@ -178,6 +140,51 @@ struct ContentView: View {
                 }
             }
         }
+    }
+
+    private var markdownScrollView: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                markdownContent
+            }
+            .background(themeManager.selectedTheme.windowBackground(isDark: isDark) ?? Color(.windowBackgroundColor))
+            .focusedSceneValue(\.rawMarkdown, document.rawMarkdown)
+            .onChange(of: selectedHeadingID) { _, newValue in
+                if let id = newValue {
+                    withAnimation {
+                        proxy.scrollTo(id, anchor: .top)
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        selectedHeadingID = nil
+                    }
+                }
+            }
+        }
+    }
+
+    private var markdownContent: some View {
+        MarkdownUI.Markdown(document.processedMarkdown, imageBaseURL: document.fileURL?.deletingLastPathComponent())
+            .markdownCodeSyntaxHighlighter(AppCodeSyntaxHighlighter(palette: themeManager.selectedTheme.syntaxColors(isDark: isDark)))
+            .markdownBlockStyle(\.codeBlock) { configuration in
+                codeBlockView(configuration: configuration)
+            }
+            .markdownBlockStyle(\.heading1) { c in headingJumpGesture(c) }
+            .markdownBlockStyle(\.heading2) { c in headingJumpGesture(c) }
+            .markdownBlockStyle(\.heading3) { c in headingJumpGesture(c) }
+            .markdownBlockStyle(\.heading4) { c in headingJumpGesture(c) }
+            .markdownBlockStyle(\.heading5) { c in headingJumpGesture(c) }
+            .markdownBlockStyle(\.heading6) { c in headingJumpGesture(c) }
+            .markdownBlockStyle(\.paragraph) { c in blockJumpGesture(c, blockType: .paragraph) }
+            .markdownBlockStyle(\.blockquote) { c in blockJumpGesture(c, blockType: .blockquote) }
+            .markdownBlockStyle(\.listItem) { c in blockJumpGesture(c, blockType: .listItem) }
+            .markdownBlockStyle(\.table) { c in blockJumpGesture(c, blockType: .table) }
+            .markdownImageProvider(.local)
+            .markdownTheme(themeManager.selectedTheme.markdownTheme(isDark: isDark))
+            .padding(.horizontal, 32)
+            .padding(.vertical, 24)
+            .frame(maxWidth: 860, alignment: .leading)
+            .frame(maxWidth: .infinity)
+            .textSelection(.enabled)
     }
 
     private func errorBanner(_ message: String) -> some View {
