@@ -49,9 +49,9 @@ struct SourceLocationMap: Sendable {
     }
 
     /// Find the source line for a block matching the given type and content key.
-    /// Returns the first exact match, or 1 (top of file) if no match is found.
-    func sourceLine(for blockType: SourceBlockType, contentKey: String) -> Int {
-        entries.first { $0.blockType == blockType && $0.contentKey == contentKey }?.line ?? 1
+    /// Returns nil if no match is found.
+    func sourceLine(for blockType: SourceBlockType, contentKey: String) -> Int? {
+        entries.first { $0.blockType == blockType && $0.contentKey == contentKey }?.line
     }
 }
 
@@ -111,12 +111,10 @@ private struct SourceLocationWalker: MarkupWalker {
 
     mutating func visitTable(_ table: Markdown.Table) {
         if let line = table.range?.lowerBound.line {
-            let text: String
-            if let firstCell = table.head.cells.first(where: { _ in true }) {
-                text = firstCell.children.compactMap { extractInlineText(from: $0) }.joined()
-            } else {
-                text = ""
-            }
+            let firstCell = table.head.cells.first(where: { _ in true })
+            let text = firstCell.map { cell in
+                cell.children.compactMap { extractInlineText(from: $0) }.joined()
+            } ?? ""
             let key = String(text.prefix(200))
             entries.append(SourceLocationEntry(blockType: .table, contentKey: key, line: line))
         }
@@ -128,21 +126,4 @@ private struct SourceLocationWalker: MarkupWalker {
             thematicBreakCount += 1
         }
     }
-}
-
-// MARK: - Inline text extraction
-
-private func extractInlineText(from markup: any Markup) -> String? {
-    if let text = markup as? Markdown.Text {
-        return text.string
-    } else if let code = markup as? InlineCode {
-        return code.code
-    } else if markup is SoftBreak {
-        return " "
-    } else if markup is LineBreak {
-        return "\n"
-    } else if let container = markup as? (any InlineContainer) {
-        return container.children.compactMap { extractInlineText(from: $0) }.joined()
-    }
-    return nil
 }

@@ -131,15 +131,15 @@ final class SourceLocationMapTests: XCTestCase {
         XCTAssertEqual(map.sourceLine(for: .thematicBreak, contentKey: "1"), 7)
     }
 
-    // MARK: - No match falls back to line 1
+    // MARK: - No match returns nil
 
-    func testNoMatchReturnsLine1() {
+    func testNoMatchReturnsNil() {
         let map = makeMap("# Title\n\nSome text.")
-        XCTAssertEqual(map.sourceLine(for: .codeBlock, contentKey: "nonexistent"), 1)
+        XCTAssertNil(map.sourceLine(for: .codeBlock, contentKey: "nonexistent"))
     }
 
-    func testEmptyMap() {
+    func testEmptyMapReturnsNil() {
         let map = SourceLocationMap.empty
-        XCTAssertEqual(map.sourceLine(for: .heading, contentKey: "anything"), 1)
+        XCTAssertNil(map.sourceLine(for: .heading, contentKey: "anything"))
     }
 }
