@@ -45,25 +45,43 @@ See [`test.md`](test.md) for rendered examples of everything supported.
 
 ```bash
 # Build the .app bundle (release)
-bash scripts/build-app.sh
+make
 
 # Debug build
-bash scripts/build-app.sh debug
+make app-debug
 
 # Launch
-open build/Pellucid.app
-```
-
-Or build and run directly with SPM:
-
-```bash
-swift build
-.build/debug/Pellucid path/to/file.md
+make open
 ```
 
 > **Note:** Running the bare executable (not the `.app` bundle) may cause window focus issues on macOS. Use the `.app` bundle for normal use.
 
 ## Install
+
+### MacPorts
+
+This repo includes a custom MacPorts port source. Requires [MacPorts](https://www.macports.org) and Xcode Command Line Tools.
+
+```bash
+# Clone the repo
+git clone https://github.com/ehkropf/pellucid.git
+
+# Add as a custom port source (inserts before the default source)
+sudo sed -i '' "1i\\
+file://$(pwd)/pellucid/ports
+" /opt/local/etc/macports/sources.conf
+
+# Sync and install
+sudo port sync
+sudo port install pellucid
+
+# Or with PlantUML diagram support:
+sudo port install pellucid +plantuml
+```
+
+The app installs to `/Applications/MacPorts/Pellucid.app`.
+
+### Manual
 
 Drag `build/Pellucid.app` to your Applications folder — just like any other Mac app.
 

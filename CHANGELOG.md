@@ -1,10 +1,13 @@
 # Changelog
 
-## 1.0.3 — 2026-03-28
+## 1.1.0 — 2026-03-28
 
 - Rename app from md_viewr to Pellucid
 - Theming system with Default and Solarized themes (system appearance drives light/dark)
 - Copy All (⌘⇧C) menu item to copy raw markdown to clipboard
+- MacPorts distribution: self-hosted custom port source in-repo (`sudo port install pellucid`)
+- `+plantuml` variant for optional PlantUML diagram support
+- Makefile replaces build-app.sh (`make`, `make test`, `make help`)
 - Fix sidebar getting pushed off-screen during horizontal window resize
 - Downscale oversized images to fit content area while preserving aspect ratio
 - PlantUML diagrams get white background in dark mode for readability

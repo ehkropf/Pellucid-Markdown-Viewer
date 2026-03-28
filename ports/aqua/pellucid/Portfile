@@ -1,0 +1,60 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+
+github.setup        ehkropf Pellucid-Markdown-Viewer 1.1.0 v
+github.tarball_from archive
+name                pellucid
+revision            0
+categories          aqua
+license             GPL-3+
+maintainers         {ehkropf @ehkropf}
+description         Native macOS markdown viewer
+long_description    Pellucid is a native macOS markdown viewer built with \
+                    Swift and SwiftUI. Renders GFM markdown with syntax \
+                    highlighting, LaTeX math, and PlantUML diagrams. \
+                    No JavaScript.
+
+platforms           {darwin >= 23}
+
+checksums           rmd160  PLACEHOLDER \
+                    sha256  PLACEHOLDER \
+                    size    PLACEHOLDER
+
+# Swift toolchain — requires Xcode or Command Line Tools
+# No MacPorts swift dependency needed; SPM uses system toolchain
+
+variant plantuml description {Enable PlantUML diagram rendering} {
+    depends_run-append port:plantuml
+}
+
+use_configure       no
+
+build.cmd           swift
+build.target        build
+build.args          -c release --disable-sandbox
+
+destroot {
+    set appdir ${destroot}${applications_dir}/Pellucid.app
+    set contents ${appdir}/Contents
+
+    xinstall -d ${contents}/MacOS
+    xinstall -d ${contents}/Resources
+
+    # Binary
+    xinstall -m 755 ${worksrcpath}/.build/release/Pellucid \
+        ${contents}/MacOS/Pellucid
+
+    # Info.plist
+    xinstall -m 644 ${worksrcpath}/Resources/Info.plist \
+        ${contents}/
+
+    # App icon
+    xinstall -m 644 ${worksrcpath}/Resources/AppIcon.icns \
+        ${contents}/Resources/
+
+    # SwiftMath resources bundle
+    copy [glob ${worksrcpath}/.build/release/*.bundle] \
+        ${contents}/Resources/
+}
