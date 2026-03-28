@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+import AppKit
 import SwiftUI
 import MarkdownUI
 
@@ -116,6 +117,76 @@ struct ContentView: View {
                                 .markdownBlockStyle(\.codeBlock) { configuration in
                                     codeBlockView(configuration: configuration)
                                 }
+                                .markdownBlockStyle(\.heading1) { configuration in
+                                    configuration.label.onTapGesture {
+                                        if NSEvent.modifierFlags.contains(.command) {
+                                            jumpToSource(blockType: .heading, contentKey: configuration.content.renderPlainText())
+                                        }
+                                    }
+                                }
+                                .markdownBlockStyle(\.heading2) { configuration in
+                                    configuration.label.onTapGesture {
+                                        if NSEvent.modifierFlags.contains(.command) {
+                                            jumpToSource(blockType: .heading, contentKey: configuration.content.renderPlainText())
+                                        }
+                                    }
+                                }
+                                .markdownBlockStyle(\.heading3) { configuration in
+                                    configuration.label.onTapGesture {
+                                        if NSEvent.modifierFlags.contains(.command) {
+                                            jumpToSource(blockType: .heading, contentKey: configuration.content.renderPlainText())
+                                        }
+                                    }
+                                }
+                                .markdownBlockStyle(\.heading4) { configuration in
+                                    configuration.label.onTapGesture {
+                                        if NSEvent.modifierFlags.contains(.command) {
+                                            jumpToSource(blockType: .heading, contentKey: configuration.content.renderPlainText())
+                                        }
+                                    }
+                                }
+                                .markdownBlockStyle(\.heading5) { configuration in
+                                    configuration.label.onTapGesture {
+                                        if NSEvent.modifierFlags.contains(.command) {
+                                            jumpToSource(blockType: .heading, contentKey: configuration.content.renderPlainText())
+                                        }
+                                    }
+                                }
+                                .markdownBlockStyle(\.heading6) { configuration in
+                                    configuration.label.onTapGesture {
+                                        if NSEvent.modifierFlags.contains(.command) {
+                                            jumpToSource(blockType: .heading, contentKey: configuration.content.renderPlainText())
+                                        }
+                                    }
+                                }
+                                .markdownBlockStyle(\.paragraph) { configuration in
+                                    configuration.label.onTapGesture {
+                                        if NSEvent.modifierFlags.contains(.command) {
+                                            jumpToSource(blockType: .paragraph, contentKey: String(configuration.content.renderPlainText().prefix(200)))
+                                        }
+                                    }
+                                }
+                                .markdownBlockStyle(\.blockquote) { configuration in
+                                    configuration.label.onTapGesture {
+                                        if NSEvent.modifierFlags.contains(.command) {
+                                            jumpToSource(blockType: .blockquote, contentKey: String(configuration.content.renderPlainText().prefix(200)))
+                                        }
+                                    }
+                                }
+                                .markdownBlockStyle(\.listItem) { configuration in
+                                    configuration.label.onTapGesture {
+                                        if NSEvent.modifierFlags.contains(.command) {
+                                            jumpToSource(blockType: .listItem, contentKey: String(configuration.content.renderPlainText().prefix(200)))
+                                        }
+                                    }
+                                }
+                                .markdownBlockStyle(\.table) { configuration in
+                                    configuration.label.onTapGesture {
+                                        if NSEvent.modifierFlags.contains(.command) {
+                                            jumpToSource(blockType: .table, contentKey: String(configuration.content.renderPlainText().prefix(200)))
+                                        }
+                                    }
+                                }
                                 .markdownImageProvider(.local)
                                 .markdownTheme(themeManager.selectedTheme.markdownTheme(isDark: isDark))
                                 .padding(.horizontal, 32)
@@ -202,8 +273,18 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .markdownMargin(top: .em(0.8), bottom: .em(0.8))
+                .onTapGesture {
+                    if NSEvent.modifierFlags.contains(.command) {
+                        jumpToSource(blockType: .codeBlock, contentKey: String(configuration.content.prefix(200)))
+                    }
+                }
         } else if lang == "plantuml" {
             DiagramBlockView(source: configuration.content)
+                .onTapGesture {
+                    if NSEvent.modifierFlags.contains(.command) {
+                        jumpToSource(blockType: .codeBlock, contentKey: String(configuration.content.prefix(200)))
+                    }
+                }
         } else {
             configuration.label
                 .relativeLineSpacing(.em(0.225))
@@ -215,6 +296,21 @@ struct ContentView: View {
                 .background(themeManager.selectedTheme.codeBlockBackground(isDark: isDark))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .markdownMargin(top: .zero, bottom: .em(0.8))
+                .onTapGesture {
+                    if NSEvent.modifierFlags.contains(.command) {
+                        jumpToSource(blockType: .codeBlock, contentKey: String(configuration.content.prefix(200)))
+                    }
+                }
         }
+    }
+
+    // MARK: - Jump to source
+
+    private func jumpToSource(blockType: SourceBlockType, contentKey: String) {
+        guard let url = document.fileURL else { return }
+        let line = document.sourceLocationMap.sourceLine(for: blockType, contentKey: contentKey)
+        let editor = MacVimEditor()
+        guard editor.isAvailable() else { return }
+        try? editor.openFile(url, atLine: line)
     }
 }

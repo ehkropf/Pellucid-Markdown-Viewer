@@ -28,6 +28,7 @@ final class MarkdownDocument: ObservableObject {
     @Published private(set) var tocEntries: [TOCEntry] = []
     @Published var errorMessage: String?
     @Published private(set) var processedMarkdown: String = ""
+    @Published private(set) var sourceLocationMap: SourceLocationMap = .empty
 
     private let fileWatcher = FileWatcher()
 
@@ -60,11 +61,13 @@ final class MarkdownDocument: ObservableObject {
 
             let document = Document(parsing: content)
             tocEntries = TOCExtractor.extractTOC(from: document)
+            sourceLocationMap = SourceLocationMap.extract(from: document)
         } catch {
             errorMessage = "Error reading file: \(error.localizedDescription)"
             rawMarkdown = ""
             processedMarkdown = ""
             tocEntries = []
+            sourceLocationMap = .empty
         }
     }
 }

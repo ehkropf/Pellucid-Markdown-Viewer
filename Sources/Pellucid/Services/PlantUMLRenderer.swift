@@ -83,39 +83,11 @@ actor PlantUMLRenderer {
     // MARK: - Private
 
     private func findPlantUML() -> String? {
-        let candidates = [
+        findExecutable(named: "plantuml", fallbackPaths: [
             "/opt/local/bin/plantuml",      // MacPorts
             "/usr/local/bin/plantuml",       // manual install / older Homebrew
             "/opt/homebrew/bin/plantuml",    // Homebrew on Apple Silicon
-        ]
-
-        for path in candidates {
-            if FileManager.default.isExecutableFile(atPath: path) {
-                return path
-            }
-        }
-
-        // Try `which` as fallback
-        let process = Process()
-        let pipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-        process.arguments = ["plantuml"]
-        process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let result = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
-            if let result, !result.isEmpty, FileManager.default.isExecutableFile(atPath: result) {
-                return result
-            }
-        } catch {
-            // `which` not found or process launch failure — not actionable, fall through
-        }
-
-        return nil
+        ])
     }
 
     private func runPlantUML(source: String, executablePath: String) async throws -> NSImage {
