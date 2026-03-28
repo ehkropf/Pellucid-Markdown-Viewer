@@ -31,9 +31,11 @@ variant plantuml description {Enable PlantUML diagram rendering} {
 
 use_configure       no
 
+# Redirect SPM cache to work directory (macports build user can't write to default location)
+build.env-append    SWIFTPM_CACHE_DIR=${workpath}/.swiftpm-cache
 build.cmd           swift
 build.target        build
-build.args          -c release --disable-sandbox
+build.args          -c release --disable-sandbox --cache-path=${workpath}/.swiftpm-cache
 
 destroot {
     set appdir ${destroot}${applications_dir}/Pellucid.app
