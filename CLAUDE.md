@@ -57,7 +57,7 @@ scripts/         — build-app.sh, generate-icon.py
 
 ## Gotchas
 
-- `build-app.sh` ad-hoc signs the .app bundle (`codesign --sign -`) — gives the soft "downloaded from internet" dialog instead of Gatekeeper hard block
+- `build-app.sh` ad-hoc signs the .app bundle (`codesign --sign -`) — does not bypass Gatekeeper; local builds from source work fine, distribution will use Homebrew/MacPorts local-build packages
 - Running bare executable (not .app bundle) causes window focus/z-order issues — always test with `build/Pellucid.app`
 - `NavigationSplitView` adds its own sidebar toggle — don't add a manual one
 - Window cleanup uses `NSWindow.willCloseNotification` (more reliable than `onDisappear` on macOS)
