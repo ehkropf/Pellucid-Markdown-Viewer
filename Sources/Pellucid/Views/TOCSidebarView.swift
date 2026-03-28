@@ -17,6 +17,28 @@
 import SwiftUI
 import AppKit
 
+// MARK: - Environment keys for TOC section context
+
+private struct TOCAllEntriesKey: EnvironmentKey {
+    static let defaultValue: [TOCEntry] = []
+}
+
+private struct TOCRawMarkdownKey: EnvironmentKey {
+    static let defaultValue: String = ""
+}
+
+extension EnvironmentValues {
+    var tocAllEntries: [TOCEntry] {
+        get { self[TOCAllEntriesKey.self] }
+        set { self[TOCAllEntriesKey.self] = newValue }
+    }
+
+    var tocRawMarkdown: String {
+        get { self[TOCRawMarkdownKey.self] }
+        set { self[TOCRawMarkdownKey.self] = newValue }
+    }
+}
+
 struct TOCSidebarView: View {
     let entries: [TOCEntry]
     let rawMarkdown: String
@@ -25,10 +47,12 @@ struct TOCSidebarView: View {
     var body: some View {
         List(selection: $selectedID) {
             ForEach(entries) { entry in
-                TOCRootEntry(entry: entry, allEntries: entries, rawMarkdown: rawMarkdown, selectedID: $selectedID)
+                TOCRootEntry(entry: entry, selectedID: $selectedID)
             }
         }
         .listStyle(.sidebar)
+        .environment(\.tocAllEntries, entries)
+        .environment(\.tocRawMarkdown, rawMarkdown)
     }
 }
 
@@ -36,21 +60,19 @@ struct TOCSidebarView: View {
 /// to get expandable groups in a sidebar List on macOS.
 private struct TOCRootEntry: View {
     let entry: TOCEntry
-    let allEntries: [TOCEntry]
-    let rawMarkdown: String
     @Binding var selectedID: String?
     @State private var isExpanded = true
 
     var body: some View {
         if entry.children.isEmpty {
-            TOCButton(entry: entry, allEntries: allEntries, rawMarkdown: rawMarkdown, selectedID: $selectedID)
+            TOCButton(entry: entry, selectedID: $selectedID)
         } else {
             Section(isExpanded: $isExpanded) {
                 ForEach(entry.children) { child in
-                    TOCChildEntry(entry: child, allEntries: allEntries, rawMarkdown: rawMarkdown, selectedID: $selectedID)
+                    TOCChildEntry(entry: child, selectedID: $selectedID)
                 }
             } header: {
-                TOCButton(entry: entry, allEntries: allEntries, rawMarkdown: rawMarkdown, selectedID: $selectedID)
+                TOCButton(entry: entry, selectedID: $selectedID)
             }
         }
     }
@@ -59,20 +81,18 @@ private struct TOCRootEntry: View {
 /// Nested entries use DisclosureGroup for deeper hierarchy.
 private struct TOCChildEntry: View {
     let entry: TOCEntry
-    let allEntries: [TOCEntry]
-    let rawMarkdown: String
     @Binding var selectedID: String?
 
     var body: some View {
         if entry.children.isEmpty {
-            TOCButton(entry: entry, allEntries: allEntries, rawMarkdown: rawMarkdown, selectedID: $selectedID)
+            TOCButton(entry: entry, selectedID: $selectedID)
         } else {
             DisclosureGroup {
                 ForEach(entry.children) { child in
-                    TOCChildEntry(entry: child, allEntries: allEntries, rawMarkdown: rawMarkdown, selectedID: $selectedID)
+                    TOCChildEntry(entry: child, selectedID: $selectedID)
                 }
             } label: {
-                TOCButton(entry: entry, allEntries: allEntries, rawMarkdown: rawMarkdown, selectedID: $selectedID)
+                TOCButton(entry: entry, selectedID: $selectedID)
             }
         }
     }
@@ -80,9 +100,9 @@ private struct TOCChildEntry: View {
 
 private struct TOCButton: View {
     let entry: TOCEntry
-    let allEntries: [TOCEntry]
-    let rawMarkdown: String
     @Binding var selectedID: String?
+    @Environment(\.tocAllEntries) private var allEntries
+    @Environment(\.tocRawMarkdown) private var rawMarkdown
 
     var body: some View {
         Button(action: { selectedID = entry.id }) {
@@ -102,10 +122,7 @@ private struct TOCButton: View {
                     allEntries: allEntries,
                     rawMarkdown: rawMarkdown
                 )
-                let pasteboard = NSPasteboard.general
-                pasteboard.clearContents()
-                pasteboard.setString(section, forType: .string)
-                NotificationCenter.default.post(name: .didCopyToClipboard, object: nil)
+                copyToClipboard(section)
             }
         }
     }

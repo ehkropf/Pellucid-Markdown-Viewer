@@ -64,6 +64,7 @@ struct TOCExtractor: MarkupWalker {
         }
         return result
     }
+
     // MARK: - Section extraction
 
     /// Flattens a nested TOCEntry tree into document order.
@@ -86,7 +87,7 @@ struct TOCExtractor: MarkupWalker {
         }
 
         let startLine = entry.lineOffset
-        var endLine: Int? = nil
+        var endLine: Int?
 
         for i in (idx + 1)..<flat.count {
             if flat[i].level <= entry.level {

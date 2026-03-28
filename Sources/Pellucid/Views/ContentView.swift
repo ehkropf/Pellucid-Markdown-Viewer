@@ -28,10 +28,6 @@ extension FocusedValues {
     }
 }
 
-extension Notification.Name {
-    static let didCopyToClipboard = Notification.Name("didCopyToClipboard")
-}
-
 struct ContentView: View {
     @EnvironmentObject var document: MarkdownDocument
     @Environment(WindowManager.self) private var windowManager
@@ -39,6 +35,7 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var selectedHeadingID: String?
     @State private var showCopiedToast = false
+    @State private var toastDismissTask: Task<Void, Never>?
     @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
     /// Guards against onChange(of: columnVisibility) firing during onAppear
     /// restoration, which would overwrite the stored value with the default.
@@ -155,10 +152,13 @@ struct ContentView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .didCopyToClipboard)) { _ in
+            toastDismissTask?.cancel()
             withAnimation(.easeIn(duration: 0.15)) {
                 showCopiedToast = true
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            toastDismissTask = Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1.5))
+                guard !Task.isCancelled else { return }
                 withAnimation(.easeOut(duration: 0.3)) {
                     showCopiedToast = false
                 }

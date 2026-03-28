@@ -37,7 +37,7 @@ struct AppCommands: Commands {
                 copyToClipboard(rawMarkdown ?? "")
             }
             .keyboardShortcut("c", modifiers: [.command, .shift])
-            .disabled(rawMarkdown == nil || rawMarkdown!.isEmpty)
+            .disabled(rawMarkdown?.isEmpty ?? true)
         }
 
         CommandGroup(replacing: .textEditing) {
@@ -45,7 +45,7 @@ struct AppCommands: Commands {
                 copyToClipboard(rawMarkdown ?? "")
             }
             .keyboardShortcut("a", modifiers: .command)
-            .disabled(rawMarkdown == nil || rawMarkdown!.isEmpty)
+            .disabled(rawMarkdown?.isEmpty ?? true)
         }
 
         CommandGroup(after: .sidebar) {
@@ -79,12 +79,5 @@ struct AppCommands: Commands {
                 windowManager.openFile(url: url)
             }
         }
-    }
-
-    private func copyToClipboard(_ text: String) {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
-        NotificationCenter.default.post(name: .didCopyToClipboard, object: nil)
     }
 }
