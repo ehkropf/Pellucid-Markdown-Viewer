@@ -1,8 +1,8 @@
-# md_viewr
+# Pellucid
 
 ![App icon](screenshots/AppIcon.png)
 
-A native macOS markdown viewer built with Swift and SwiftUI. No web views, no JavaScript, no Electron — just fast, native rendering that feels like a first-class Mac app. md_viewr is a viewer, not an editor. Open a markdown file, see it rendered beautifully, and let your editor of choice handle the writing while md_viewr live-reloads on every save.
+A native macOS markdown viewer built with Swift and SwiftUI. No web views, no JavaScript, no Electron — just fast, native rendering that feels like a first-class Mac app. Pellucid is a viewer, not an editor. Open a markdown file, see it rendered beautifully, and let your editor of choice handle the writing while Pellucid live-reloads on every save.
 
 <p align="center">
   <img src="screenshots/empty-state.png" width="45%" alt="Empty state" />
@@ -51,47 +51,47 @@ bash scripts/build-app.sh
 bash scripts/build-app.sh debug
 
 # Launch
-open build/md_viewr.app
+open build/Pellucid.app
 ```
 
 Or build and run directly with SPM:
 
 ```bash
 swift build
-.build/debug/md_viewr path/to/file.md
+.build/debug/Pellucid path/to/file.md
 ```
 
 > **Note:** Running the bare executable (not the `.app` bundle) may cause window focus issues on macOS. Use the `.app` bundle for normal use.
 
 ## Install
 
-Drag `build/md_viewr.app` to your Applications folder — just like any other Mac app.
+Drag `build/Pellucid.app` to your Applications folder — just like any other Mac app.
 
 Or from the command line:
 
 ```bash
-cp -R build/md_viewr.app /Applications/
+cp -R build/Pellucid.app /Applications/
 ```
 
 ## Usage
 
 ```bash
 # Open with a file
-open build/md_viewr.app test.md
+open build/Pellucid.app test.md
 
 # Or run directly
-build/md_viewr.app/Contents/MacOS/md_viewr ~/notes/readme.md
+build/Pellucid.app/Contents/MacOS/Pellucid ~/notes/readme.md
 ```
 
 You can also:
 - **Drag and drop** a `.md` file onto the window
 - **File > Open** (⌘O) to browse for a file
-- Double-click a `.md` file if md_viewr is set as the handler
+- Double-click a `.md` file if Pellucid is set as the handler
 
 ## Architecture
 
 ```
-md_viewr/
+Pellucid/
   App/           — entry point, AppDelegate, menu commands
   Models/        — MarkdownDocument, TOCEntry, FileWatcher
   Views/         — ContentView, TOCSidebarView, MathBlockView, DiagramBlockView

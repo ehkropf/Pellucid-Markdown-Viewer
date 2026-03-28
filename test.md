@@ -1,4 +1,4 @@
-# md_viewr Acceptance Test
+# Pellucid Acceptance Test
 
 This file exercises GFM features for visual verification.
 
@@ -67,8 +67,8 @@ def fibonacci(n):
 
 ```json
 {
-  "name": "md_viewr",
-  "version": "0.1.0",
+  "name": "Pellucid",
+  "version": "1.0.3",
   "platform": "macOS"
 }
 ```

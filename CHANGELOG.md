@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.3 — 2026-03-28
+
+- Rename app from md_viewr to Pellucid
+- Theming system with Default, Solarized Light, and Solarized Dark themes
+- Copy All (⌘⇧C) menu item to copy raw markdown to clipboard
+
 ## 1.0.2 — 2026-03-22
 
 - Redesigned app icon

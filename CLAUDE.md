@@ -1,4 +1,4 @@
-# md_viewr
+# Pellucid
 
 Native macOS markdown viewer. Swift 6 + SwiftUI, macOS 14+. No JavaScript. No Xcode project — SPM only.
 
@@ -6,22 +6,22 @@ Native macOS markdown viewer. Swift 6 + SwiftUI, macOS 14+. No JavaScript. No Xc
 
 - `swift build` — debug build (parallel by default, `-j N` to limit)
 - `swift build -c release` — release build
-- `bash scripts/build-app.sh` — build + assemble .app bundle to `build/md_viewr.app`
+- `bash scripts/build-app.sh` — build + assemble .app bundle to `build/Pellucid.app`
 - `bash scripts/build-app.sh debug` — debug .app bundle
-- `open build/md_viewr.app` — launch app
+- `open build/Pellucid.app` — launch app
 - `swift test` — run tests
 - Clean: `rm -rf .build build` or `swift package clean` (only clears `.build`)
 
 ## Architecture
 
 ```
-Sources/md_viewr/
-  App/           — @main entry point (md_viewrApp), menu commands (AppCommands)
+Sources/Pellucid/
+  App/           — @main entry point (PellucidApp), menu commands (AppCommands)
   Models/        — MarkdownDocument, WindowManager, FileIdentity, TOCEntry, FileWatcher
   Views/         — DocumentWindowView, ContentView, WindowAccessor, TOCSidebarView, MathBlockView, DiagramBlockView
   Services/      — TOCExtractor, SyntaxHighlighter, PlantUMLRenderer, LocalImageProvider
   Utilities/     — Slugify, MathPreprocessor
-Tests/md_viewrTests/ — test target (logic tests only, no UI tests)
+Tests/PellucidTests/ — test target (logic tests only, no UI tests)
 Resources/       — Info.plist, AppIcon.{svg,png,icns}, icon-philosophy.md
 scripts/         — build-app.sh, generate-icon.py
 ```
@@ -56,7 +56,7 @@ scripts/         — build-app.sh, generate-icon.py
 ## Gotchas
 
 - `build-app.sh` ad-hoc signs the .app bundle (`codesign --sign -`) — gives the soft "downloaded from internet" dialog instead of Gatekeeper hard block
-- Running bare executable (not .app bundle) causes window focus/z-order issues — always test with `build/md_viewr.app`
+- Running bare executable (not .app bundle) causes window focus/z-order issues — always test with `build/Pellucid.app`
 - `NavigationSplitView` adds its own sidebar toggle — don't add a manual one
 - Window cleanup uses `NSWindow.willCloseNotification` (more reliable than `onDisappear` on macOS)
 - `WindowManager.openWindowAction` captured once from first window via `captureOpenWindowAction()` — idempotent, set-once

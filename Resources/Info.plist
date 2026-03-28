@@ -3,15 +3,15 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleExecutable</key>
-	<string>md_viewr</string>
+	<string>Pellucid</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.ehkropf.md-viewr</string>
+	<string>com.ehkropf.pellucid</string>
 	<key>CFBundleName</key>
-	<string>md_viewr</string>
+	<string>Pellucid</string>
 	<key>CFBundleDisplayName</key>
-	<string>md_viewr</string>
+	<string>Pellucid</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.2</string>
+	<string>1.0.3</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleInfoDictionaryVersion</key>

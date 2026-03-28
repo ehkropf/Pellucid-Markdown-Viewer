@@ -1,6 +1,6 @@
 // swift-tools-version: 6.0
 //
-// md_viewr — Native macOS markdown viewer
+// Pellucid — Native macOS markdown viewer
 // Copyright (C) 2026 Everett Kropf
 //
 // This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "md_viewr",
+    name: "Pellucid",
     platforms: [
         .macOS(.v14)
     ],
@@ -30,7 +30,7 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "md_viewr",
+            name: "Pellucid",
             dependencies: [
                 .product(name: "Markdown", package: "swift-markdown"),
                 .product(name: "MarkdownUI", package: "swift-markdown-ui"),
@@ -38,9 +38,9 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "md_viewrTests",
+            name: "PellucidTests",
             dependencies: [
-                "md_viewr",
+                "Pellucid",
                 .product(name: "Markdown", package: "swift-markdown"),
             ]
         ),

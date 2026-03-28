@@ -1,5 +1,5 @@
 #!/bin/bash
-# md_viewr — Native macOS markdown viewer
+# Pellucid — Native macOS markdown viewer
 # Copyright (C) 2026 Everett Kropf
 #
 # This program is free software: you can redistribute it and/or modify
@@ -17,11 +17,11 @@
 
 set -euo pipefail
 
-# Build md_viewr.app bundle from SPM executable
+# Build Pellucid.app bundle from SPM executable
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-APP_NAME="md_viewr"
+APP_NAME="Pellucid"
 APP_BUNDLE="${PROJECT_DIR}/build/${APP_NAME}.app"
 CONTENTS="${APP_BUNDLE}/Contents"
 CONFIG="${1:-release}"

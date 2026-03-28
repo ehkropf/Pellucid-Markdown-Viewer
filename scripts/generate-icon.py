@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# md_viewr — Native macOS markdown viewer
+# Pellucid — Native macOS markdown viewer
 # Copyright (C) 2026 Everett Kropf
 #
 # This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-"""Generate md_viewr app icon PNG and .icns from the SVG source."""
+"""Generate Pellucid app icon PNG and .icns from the SVG source."""
 
 # SVG is the source of truth — edit Resources/AppIcon.svg directly.
 # This script converts SVG → PNG → .icns.
