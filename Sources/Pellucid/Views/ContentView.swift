@@ -32,12 +32,15 @@ struct ContentView: View {
     @EnvironmentObject var document: MarkdownDocument
     @Environment(WindowManager.self) private var windowManager
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme
     @State private var selectedHeadingID: String?
     @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
     /// Guards against onChange(of: columnVisibility) firing during onAppear
     /// restoration, which would overwrite the stored value with the default.
     @State private var didRestoreState = false
     @SceneStorage("columnVisibility") private var storedVisibility: String = "automatic"
+
+    private var isDark: Bool { colorScheme == .dark }
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -105,19 +108,19 @@ struct ContentView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         MarkdownUI.Markdown(document.processedMarkdown, imageBaseURL: document.fileURL?.deletingLastPathComponent())
-                            .markdownCodeSyntaxHighlighter(AppCodeSyntaxHighlighter(palette: themeManager.selectedTheme.syntaxColors))
+                            .markdownCodeSyntaxHighlighter(AppCodeSyntaxHighlighter(palette: themeManager.selectedTheme.syntaxColors(isDark: isDark)))
                             .markdownBlockStyle(\.codeBlock) { configuration in
                                 codeBlockView(configuration: configuration)
                             }
                             .markdownImageProvider(.local)
-                            .markdownTheme(themeManager.selectedTheme.markdownTheme)
+                            .markdownTheme(themeManager.selectedTheme.markdownTheme(isDark: isDark))
                             .padding(.horizontal, 32)
                             .padding(.vertical, 24)
                             .frame(maxWidth: 860, alignment: .leading)
                             .frame(maxWidth: .infinity)
                             .textSelection(.enabled)
                     }
-                    .background(themeManager.selectedTheme.windowBackground ?? Color(.windowBackgroundColor))
+                    .background(themeManager.selectedTheme.windowBackground(isDark: isDark) ?? Color(.windowBackgroundColor))
                     .focusedSceneValue(\.rawMarkdown, document.rawMarkdown)
                     .onChange(of: selectedHeadingID) { _, newValue in
                         if let id = newValue {
@@ -167,7 +170,7 @@ struct ContentView: View {
     private func codeBlockView(configuration: CodeBlockConfiguration) -> some View {
         let lang = configuration.language?.lowercased()
         if lang == "math" || lang == "latex" {
-            MathBlockView(latex: configuration.content.trimmingCharacters(in: .whitespacesAndNewlines), textColor: themeManager.selectedTheme.mathTextColor)
+            MathBlockView(latex: configuration.content.trimmingCharacters(in: .whitespacesAndNewlines), textColor: themeManager.selectedTheme.mathTextColor(isDark: isDark))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .markdownMargin(top: .em(0.8), bottom: .em(0.8))
@@ -181,7 +184,7 @@ struct ContentView: View {
                     FontSize(.em(0.85))
                 }
                 .padding(16)
-                .background(themeManager.selectedTheme.codeBlockBackground)
+                .background(themeManager.selectedTheme.codeBlockBackground(isDark: isDark))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .markdownMargin(top: .zero, bottom: .em(0.8))
         }

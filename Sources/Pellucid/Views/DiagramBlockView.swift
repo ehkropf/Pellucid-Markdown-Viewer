@@ -22,6 +22,7 @@ import SwiftUI
 struct DiagramBlockView: View {
     let source: String
 
+    @Environment(\.colorScheme) private var colorScheme
     @State private var state: RenderState = .loading
 
     private enum RenderState {
@@ -42,6 +43,13 @@ struct DiagramBlockView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(maxWidth: .infinity)
+                    .padding(colorScheme == .dark ? 8 : 0)
+                    .background(
+                        colorScheme == .dark
+                            ? AnyShapeStyle(Color.white)
+                            : AnyShapeStyle(.clear)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: colorScheme == .dark ? 8 : 0))
             case .unavailable:
                 unavailableView
             case .failed(let message):

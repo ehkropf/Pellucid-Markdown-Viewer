@@ -28,6 +28,11 @@ final class ThemeManager {
 
     private init() {
         let stored = UserDefaults.standard.string(forKey: "selectedTheme") ?? AppTheme.default.rawValue
-        selectedTheme = AppTheme(rawValue: stored) ?? .default
+        // Migrate legacy per-variant values to unified "solarized"
+        if stored == "solarizedLight" || stored == "solarizedDark" {
+            selectedTheme = .solarized
+        } else {
+            selectedTheme = AppTheme(rawValue: stored) ?? .default
+        }
     }
 }

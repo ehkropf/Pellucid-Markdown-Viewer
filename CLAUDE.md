@@ -31,13 +31,13 @@ scripts/         — build-app.sh, generate-icon.py
 - `DocumentWindowView` wraps `ContentView` per window — creates `@StateObject` `MarkdownDocument`, registers with `WindowManager`, captures `NSWindow` via `WindowAccessor`
 - All file-open paths (File > Open, drag-drop, CLI args, Finder) converge through `WindowManager.openFile(url:)`
 - `MarkdownDocument` is a clean `@MainActor ObservableObject` — owns file URL, raw text, TOC, FileWatcher
-- MarkdownUI renders GFM with `.markdownTheme(.gitHub)`
+- MarkdownUI renders GFM with theme from `ThemeManager` (`.markdownTheme(themeManager.selectedTheme.markdownTheme(isDark:))`)
 - Code blocks dispatch via `.markdownBlockStyle(\.codeBlock)`: `math`/`latex` → MathBlockView, `plantuml` → DiagramBlockView, else → syntax-highlighted
 - TOC extracted from swift-markdown AST via `MarkupWalker`, displayed in `NavigationSplitView` sidebar
 - `ScrollViewReader` handles click-to-scroll from TOC to heading
 - FileWatcher uses `DispatchSource` with 200ms debounce; handles atomic writes (delete+recreate)
 - Sidebar visibility persisted via `@SceneStorage` string bridge with race-safe restore guard (`didRestoreState`)
-- `ThemeManager` (`@MainActor @Observable` singleton) manages app-wide theme (Default, Solarized Light, Solarized Dark) via `AppTheme` enum
+- `ThemeManager` (`@MainActor @Observable` singleton) manages app-wide theme (Default, Solarized) via `AppTheme` enum; system appearance drives light/dark
 - `MathPreprocessor` converts `$$...$$` block delimiters to fenced ```math blocks before parsing
 
 ## Key Constraints
@@ -68,6 +68,10 @@ scripts/         — build-app.sh, generate-icon.py
 - FileWatcher DispatchSource handlers must use `MainActor.assumeIsolated` — source queue is `.main` but closures are non-isolated
 - `markdownExtensions` constant in Slugify.swift is shared by AppCommands and ContentView — keep in sync
 - PlantUML subprocess sets `JAVA_TOOL_OPTIONS=-Djava.awt.headless=true` — without this, Java's AWT steals app focus
+- `NavigationSplitView` uses `.balanced` style — prevents sidebar from being pushed off-screen during resize
+- `LocalImageProvider` uses `maxWidth`/`maxHeight` (not fixed `width`/`height`) — images scale down to fit content area but never upscale
+- `DiagramBlockView` adds white background behind PlantUML diagrams in dark mode — no re-rendering needed, pure view styling
+- `@Environment(\.colorScheme)` does NOT propagate into MarkdownUI block style closures — pass values explicitly or use environment in standalone views like `DiagramBlockView`
 
 ## Testing
 

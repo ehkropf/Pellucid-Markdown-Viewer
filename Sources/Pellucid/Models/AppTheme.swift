@@ -19,54 +19,47 @@ import SwiftUI
 
 enum AppTheme: String, CaseIterable, Sendable {
     case `default` = "default"
-    case solarizedLight = "solarizedLight"
-    case solarizedDark = "solarizedDark"
+    case solarized = "solarized"
 
     var displayName: String {
         switch self {
         case .default: "Default"
-        case .solarizedLight: "Solarized Light"
-        case .solarizedDark: "Solarized Dark"
+        case .solarized: "Solarized"
         }
     }
 
-    @MainActor var markdownTheme: Theme {
+    @MainActor func markdownTheme(isDark: Bool) -> Theme {
         switch self {
         case .default: .gitHub
-        case .solarizedLight: makeSolarizedLightTheme()
-        case .solarizedDark: makeSolarizedDarkTheme()
+        case .solarized: isDark ? makeSolarizedDarkTheme() : makeSolarizedLightTheme()
         }
     }
 
-    var syntaxColors: SyntaxColorPalette {
+    func syntaxColors(isDark: Bool) -> SyntaxColorPalette {
         switch self {
         case .default: .default
-        case .solarizedLight: .solarizedLight
-        case .solarizedDark: .solarizedDark
+        case .solarized: isDark ? .solarizedDark : .solarizedLight
         }
     }
 
-    var codeBlockBackground: Color {
+    func codeBlockBackground(isDark: Bool) -> Color {
         switch self {
         case .default: Color(.textBackgroundColor).opacity(0.5)
-        case .solarizedLight: Solarized.base2
-        case .solarizedDark: Solarized.base02
+        case .solarized: isDark ? Solarized.base02 : Solarized.base2
         }
     }
 
-    var windowBackground: Color? {
+    func windowBackground(isDark: Bool) -> Color? {
         switch self {
         case .default: nil
-        case .solarizedLight: Solarized.base3
-        case .solarizedDark: Solarized.base03
+        case .solarized: isDark ? Solarized.base03 : Solarized.base3
         }
     }
 
-    var mathTextColor: NSColor {
+    func mathTextColor(isDark: Bool) -> NSColor {
         switch self {
         case .default: .textColor
-        case .solarizedLight: NSColor(Solarized.base00)
-        case .solarizedDark: NSColor(Solarized.base0)
+        case .solarized: isDark ? NSColor(Solarized.base0) : NSColor(Solarized.base00)
         }
     }
 }
