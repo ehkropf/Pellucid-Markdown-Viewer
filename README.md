@@ -60,23 +60,15 @@ make open
 
 ### MacPorts
 
-This repo includes a custom MacPorts port source. Requires [MacPorts](https://www.macports.org) and Xcode Command Line Tools.
+Requires [MacPorts](https://www.macports.org) and Xcode Command Line Tools.
 
 ```bash
-# Clone the repo
-git clone https://github.com/ehkropf/pellucid.git
-
-# Add as a custom port source (inserts before the default source)
-sudo sed -i '' "1i\\
-file://$(pwd)/pellucid/ports
-" /opt/local/etc/macports/sources.conf
-
-# Sync and install
-sudo port sync
-sudo port install pellucid
+git clone https://github.com/ehkropf/Pellucid-Markdown-Viewer.git
+cd Pellucid-Markdown-Viewer
+sudo port -D ports/aqua/pellucid install pellucid
 
 # Or with PlantUML diagram support:
-sudo port install pellucid +plantuml
+sudo port -D ports/aqua/pellucid install pellucid +plantuml
 ```
 
 The app installs to `/Applications/MacPorts/Pellucid.app`.
