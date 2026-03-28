@@ -31,10 +31,8 @@ variant plantuml description {Enable PlantUML diagram rendering} {
 
 use_configure       no
 
-# Redirect SPM state to work directory (macports build user can't write to default locations)
-build.env-append    SWIFTPM_CACHE_DIR=${workpath}/.swiftpm-cache \
-                    SWIFTPM_CONFIGURATION_DIR=${workpath}/.swiftpm-config \
-                    SWIFTPM_SECURITY_DIR=${workpath}/.swiftpm-security
+# Redirect SPM home to work directory (macports build user can't write to default locations)
+build.env-append    HOME=${workpath}
 build.cmd           swift
 build.target        build
 build.args          -c release --disable-sandbox --cache-path=${workpath}/.swiftpm-cache
