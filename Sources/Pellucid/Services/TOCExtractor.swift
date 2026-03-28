@@ -18,7 +18,7 @@ import Markdown
 
 /// Walks the swift-markdown AST and extracts headings into a nested TOCEntry tree.
 struct TOCExtractor: MarkupWalker {
-    private var flatEntries: [(level: Int, title: String, id: String)] = []
+    private var flatEntries: [(level: Int, title: String, id: String, lineOffset: Int)] = []
 
     static func extractTOC(from document: Document) -> [TOCEntry] {
         var extractor = TOCExtractor()
@@ -29,7 +29,8 @@ struct TOCExtractor: MarkupWalker {
     mutating func visitHeading(_ heading: Heading) {
         let title = heading.plainText
         let id = slugify(title)
-        flatEntries.append((level: heading.level, title: title, id: id))
+        let line = (heading.range?.lowerBound.line ?? 1) - 1  // 0-based
+        flatEntries.append((level: heading.level, title: title, id: id, lineOffset: line))
         descendInto(heading)
     }
 
@@ -37,14 +38,14 @@ struct TOCExtractor: MarkupWalker {
     /// Consumes entries recursively: children are entries with level > parent's level,
     /// stopping when we hit a same-or-lower level entry.
     private static func buildTree(
-        from entries: [(level: Int, title: String, id: String)]
+        from entries: [(level: Int, title: String, id: String, lineOffset: Int)]
     ) -> [TOCEntry] {
         var index = 0
         return buildChildren(from: entries, index: &index, parentLevel: 0)
     }
 
     private static func buildChildren(
-        from entries: [(level: Int, title: String, id: String)],
+        from entries: [(level: Int, title: String, id: String, lineOffset: Int)],
         index: inout Int,
         parentLevel: Int
     ) -> [TOCEntry] {
@@ -57,10 +58,51 @@ struct TOCExtractor: MarkupWalker {
                 id: entry.id,
                 level: entry.level,
                 title: entry.title,
+                lineOffset: entry.lineOffset,
                 children: children
             ))
         }
         return result
+    }
+    // MARK: - Section extraction
+
+    /// Flattens a nested TOCEntry tree into document order.
+    static func flatten(_ entries: [TOCEntry]) -> [TOCEntry] {
+        var result: [TOCEntry] = []
+        for entry in entries {
+            result.append(entry)
+            result.append(contentsOf: flatten(entry.children))
+        }
+        return result
+    }
+
+    /// Extracts the raw markdown for the section starting at the given TOCEntry.
+    /// The section spans from the entry's heading line to just before the next
+    /// heading at the same or higher (lower number) level, or end of document.
+    static func extractSection(for entry: TOCEntry, allEntries: [TOCEntry], rawMarkdown: String) -> String {
+        let flat = flatten(allEntries)
+        guard let idx = flat.firstIndex(where: { $0.id == entry.id && $0.lineOffset == entry.lineOffset }) else {
+            return ""
+        }
+
+        let startLine = entry.lineOffset
+        var endLine: Int? = nil
+
+        for i in (idx + 1)..<flat.count {
+            if flat[i].level <= entry.level {
+                endLine = flat[i].lineOffset
+                break
+            }
+        }
+
+        let lines = rawMarkdown.components(separatedBy: "\n")
+        let end = endLine ?? lines.count
+        guard startLine < lines.count else { return "" }
+        let sectionLines = lines[startLine..<min(end, lines.count)]
+
+        // Trim trailing blank lines
+        let trimmed = sectionLines.reversed().drop(while: { $0.trimmingCharacters(in: .whitespaces).isEmpty })
+        return trimmed.reversed().joined(separator: "\n")
     }
 }
 

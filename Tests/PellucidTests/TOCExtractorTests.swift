@@ -161,6 +161,126 @@ final class TOCExtractorTests: XCTestCase {
         XCTAssertEqual(toc[0].title, "deleted text")
     }
 
+    // MARK: - Line offsets
+
+    func testHeadingLineOffsets() {
+        let toc = extractTOC("""
+        # First
+
+        Some text.
+
+        ## Second
+
+        More text.
+
+        ## Third
+        """)
+        XCTAssertEqual(toc[0].lineOffset, 0)
+        XCTAssertEqual(toc[0].children[0].lineOffset, 4)
+        XCTAssertEqual(toc[0].children[1].lineOffset, 8)
+    }
+
+    // MARK: - Section extraction
+
+    func testExtractSectionFirstHeading() {
+        let markdown = """
+        # Title
+
+        Intro paragraph.
+
+        ## Section One
+
+        Content one.
+
+        ## Section Two
+
+        Content two.
+        """
+        let entries = extractTOC(markdown)
+        let section = TOCExtractor.extractSection(for: entries[0], allEntries: entries, rawMarkdown: markdown)
+        XCTAssertTrue(section.hasPrefix("# Title"))
+        XCTAssertTrue(section.contains("Intro paragraph."))
+        XCTAssertTrue(section.contains("Content one."))
+        XCTAssertTrue(section.contains("Content two."))
+    }
+
+    func testExtractSectionMiddle() {
+        let markdown = """
+        # Title
+
+        ## Section One
+
+        Content one.
+
+        ## Section Two
+
+        Content two.
+        """
+        let entries = extractTOC(markdown)
+        let flat = TOCExtractor.flatten(entries)
+        let sectionOne = flat.first(where: { $0.title == "Section One" })!
+        let section = TOCExtractor.extractSection(for: sectionOne, allEntries: entries, rawMarkdown: markdown)
+        XCTAssertTrue(section.hasPrefix("## Section One"))
+        XCTAssertTrue(section.contains("Content one."))
+        XCTAssertFalse(section.contains("Content two."))
+    }
+
+    func testExtractSectionLast() {
+        let markdown = """
+        # Title
+
+        ## Section One
+
+        Content one.
+
+        ## Section Two
+
+        Content two.
+        """
+        let entries = extractTOC(markdown)
+        let flat = TOCExtractor.flatten(entries)
+        let sectionTwo = flat.first(where: { $0.title == "Section Two" })!
+        let section = TOCExtractor.extractSection(for: sectionTwo, allEntries: entries, rawMarkdown: markdown)
+        XCTAssertTrue(section.hasPrefix("## Section Two"))
+        XCTAssertTrue(section.contains("Content two."))
+        XCTAssertFalse(section.contains("Content one."))
+    }
+
+    func testExtractSectionIncludesSubheadings() {
+        let markdown = """
+        # Title
+
+        ## Section
+
+        Content.
+
+        ### Subsection
+
+        Sub content.
+
+        ## Next Section
+
+        Next content.
+        """
+        let entries = extractTOC(markdown)
+        let flat = TOCExtractor.flatten(entries)
+        let section = flat.first(where: { $0.title == "Section" })!
+        let result = TOCExtractor.extractSection(for: section, allEntries: entries, rawMarkdown: markdown)
+        XCTAssertTrue(result.contains("### Subsection"))
+        XCTAssertTrue(result.contains("Sub content."))
+        XCTAssertFalse(result.contains("Next content."))
+    }
+
+    func testExtractSectionEmpty() {
+        let markdown = """
+        ## One
+        ## Two
+        """
+        let entries = extractTOC(markdown)
+        let section = TOCExtractor.extractSection(for: entries[0], allEntries: entries, rawMarkdown: markdown)
+        XCTAssertEqual(section, "## One")
+    }
+
     // MARK: - ID alignment with slugify
 
     func testIDMatchesSlugify() {

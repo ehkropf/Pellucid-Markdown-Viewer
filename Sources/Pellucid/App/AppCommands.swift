@@ -40,6 +40,14 @@ struct AppCommands: Commands {
             .disabled(rawMarkdown == nil || rawMarkdown!.isEmpty)
         }
 
+        CommandGroup(replacing: .textEditing) {
+            Button("Select All") {
+                copyToClipboard(rawMarkdown ?? "")
+            }
+            .keyboardShortcut("a", modifiers: .command)
+            .disabled(rawMarkdown == nil || rawMarkdown!.isEmpty)
+        }
+
         CommandGroup(after: .sidebar) {
             Divider()
             Picker("Theme", selection: Binding(
@@ -77,5 +85,6 @@ struct AppCommands: Commands {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
+        NotificationCenter.default.post(name: .didCopyToClipboard, object: nil)
     }
 }

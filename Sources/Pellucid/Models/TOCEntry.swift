@@ -18,5 +18,6 @@ struct TOCEntry: Identifiable, Equatable, Sendable {
     let id: String
     let level: Int
     let title: String
+    let lineOffset: Int
     let children: [TOCEntry]
 }

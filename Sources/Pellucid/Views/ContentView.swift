@@ -28,12 +28,17 @@ extension FocusedValues {
     }
 }
 
+extension Notification.Name {
+    static let didCopyToClipboard = Notification.Name("didCopyToClipboard")
+}
+
 struct ContentView: View {
     @EnvironmentObject var document: MarkdownDocument
     @Environment(WindowManager.self) private var windowManager
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
     @State private var selectedHeadingID: String?
+    @State private var showCopiedToast = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
     /// Guards against onChange(of: columnVisibility) firing during onAppear
     /// restoration, which would overwrite the stored value with the default.
@@ -93,46 +98,69 @@ struct ContentView: View {
         } else {
             TOCSidebarView(
                 entries: document.tocEntries,
+                rawMarkdown: document.rawMarkdown,
                 selectedID: $selectedHeadingID
             )
         }
     }
 
     private var detail: some View {
-        Group {
-            if let error = document.errorMessage {
-                errorBanner(error)
-            } else if document.rawMarkdown.isEmpty {
-                emptyState
-            } else {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        MarkdownUI.Markdown(document.processedMarkdown, imageBaseURL: document.fileURL?.deletingLastPathComponent())
-                            .markdownCodeSyntaxHighlighter(AppCodeSyntaxHighlighter(palette: themeManager.selectedTheme.syntaxColors(isDark: isDark)))
-                            .markdownBlockStyle(\.codeBlock) { configuration in
-                                codeBlockView(configuration: configuration)
-                            }
-                            .markdownImageProvider(.local)
-                            .markdownTheme(themeManager.selectedTheme.markdownTheme(isDark: isDark))
-                            .padding(.horizontal, 32)
-                            .padding(.vertical, 24)
-                            .frame(maxWidth: 860, alignment: .leading)
-                            .frame(maxWidth: .infinity)
-                            .textSelection(.enabled)
-                    }
-                    .background(themeManager.selectedTheme.windowBackground(isDark: isDark) ?? Color(.windowBackgroundColor))
-                    .focusedSceneValue(\.rawMarkdown, document.rawMarkdown)
-                    .onChange(of: selectedHeadingID) { _, newValue in
-                        if let id = newValue {
-                            withAnimation {
-                                proxy.scrollTo(id, anchor: .top)
-                            }
-                            // Clear selection after scroll animation so the same heading can be re-selected
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                selectedHeadingID = nil
+        ZStack {
+            Group {
+                if let error = document.errorMessage {
+                    errorBanner(error)
+                } else if document.rawMarkdown.isEmpty {
+                    emptyState
+                } else {
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            MarkdownUI.Markdown(document.processedMarkdown, imageBaseURL: document.fileURL?.deletingLastPathComponent())
+                                .markdownCodeSyntaxHighlighter(AppCodeSyntaxHighlighter(palette: themeManager.selectedTheme.syntaxColors(isDark: isDark)))
+                                .markdownBlockStyle(\.codeBlock) { configuration in
+                                    codeBlockView(configuration: configuration)
+                                }
+                                .markdownImageProvider(.local)
+                                .markdownTheme(themeManager.selectedTheme.markdownTheme(isDark: isDark))
+                                .padding(.horizontal, 32)
+                                .padding(.vertical, 24)
+                                .frame(maxWidth: 860, alignment: .leading)
+                                .frame(maxWidth: .infinity)
+                                .textSelection(.enabled)
+                        }
+                        .background(themeManager.selectedTheme.windowBackground(isDark: isDark) ?? Color(.windowBackgroundColor))
+                        .focusedSceneValue(\.rawMarkdown, document.rawMarkdown)
+                        .onChange(of: selectedHeadingID) { _, newValue in
+                            if let id = newValue {
+                                withAnimation {
+                                    proxy.scrollTo(id, anchor: .top)
+                                }
+                                // Clear selection after scroll animation so the same heading can be re-selected
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                    selectedHeadingID = nil
+                                }
                             }
                         }
                     }
+                }
+            }
+
+            if showCopiedToast {
+                Text("Copied to clipboard")
+                    .font(.system(size: 13, weight: .medium))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                    .transition(.opacity)
+                    .allowsHitTesting(false)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .didCopyToClipboard)) { _ in
+            withAnimation(.easeIn(duration: 0.15)) {
+                showCopiedToast = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    showCopiedToast = false
                 }
             }
         }
