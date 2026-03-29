@@ -2,14 +2,12 @@
 
 ## Unreleased
 
-- Revert Cmd+click jump-to-editor feature (broke rendering)
 - Add underline styling to links for better visual affordance
 - Use pointer cursor instead of I-beam in rendered content
 - Fix relative links in markdown files (e.g., test.md link in README)
 - Deduplicate file-open events: clicking a markdown link reuses existing window
-- `make open` now builds the app if needed
 - `make install` copies app to /Applications
-- Homebrew formula for building from source (`Formula/pellucid.rb`)
+- Homebrew tap for installing from source (`brew tap ehkropf/pellucid`)
 
 ## 1.1.0 — 2026-03-28
 

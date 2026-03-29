@@ -38,19 +38,6 @@ See [`test.md`](test.md) for rendered examples of everything supported.
   sudo port install plantuml
   ```
 
-## Build
-
-```bash
-# Build the .app bundle (release)
-make
-
-# Debug build
-make app-debug
-
-# Launch
-make open
-```
-
 > **Note:** Running the bare executable (not the `.app` bundle) may cause window focus issues on macOS. Use the `.app` bundle for normal use.
 
 ## Install
@@ -74,8 +61,8 @@ The app installs to `/Applications/MacPorts/Pellucid.app`.
 Requires [Homebrew](https://brew.sh) and Xcode Command Line Tools.
 
 ```bash
-git clone https://github.com/ehkropf/Pellucid-Markdown-Viewer.git
-brew install --formula Pellucid-Markdown-Viewer/Formula/pellucid.rb
+brew tap ehkropf/pellucid
+brew install pellucid
 
 # Then symlink to /Applications:
 ln -sf $(brew --prefix)/opt/pellucid/Pellucid.app /Applications/Pellucid.app
