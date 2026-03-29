@@ -212,12 +212,13 @@ final class MarkdownRendererTests: XCTestCase {
 
     func testMultipleParagraphs() {
         let result = render("First paragraph.\n\nSecond paragraph.")
-        XCTAssertEqual(result.attributedString.string, "First paragraph.\n\nSecond paragraph.")
+        // Blocks are now separated by a single newline (paragraph styles handle visual spacing).
+        XCTAssertEqual(result.attributedString.string, "First paragraph.\nSecond paragraph.")
     }
 
     func testThreeParagraphs() {
         let result = render("One.\n\nTwo.\n\nThree.")
-        XCTAssertEqual(result.attributedString.string, "One.\n\nTwo.\n\nThree.")
+        XCTAssertEqual(result.attributedString.string, "One.\nTwo.\nThree.")
     }
 
     // MARK: - Source Map
@@ -243,6 +244,11 @@ final class MarkdownRendererTests: XCTestCase {
         let second = result.sourceMap.entries[1]
         XCTAssertEqual(second.nodeType, .paragraph)
         XCTAssertEqual(second.sourceLineRange, 2..<3)
+
+        // Verify the attributed string offsets account for single-newline block separator.
+        // "First." = 6 chars, then "\n" separator = 1, then "Second." starts at 7.
+        XCTAssertEqual(first.attributedStringRange, NSRange(location: 0, length: 6))
+        XCTAssertEqual(second.attributedStringRange, NSRange(location: 7, length: 7))
     }
 
     func testSourceMapLineRanges() {
@@ -287,5 +293,418 @@ final class MarkdownRendererTests: XCTestCase {
         // "code" = monospace (at offset 19)
         let codeFont = result.attributedString.attributes(at: 19, effectiveRange: nil)[.font] as? NSFont
         XCTAssertEqual(codeFont, theme.codeFont)
+    }
+
+    // MARK: - Heading Levels
+
+    func testHeadingLevel1Font() {
+        let result = render("# Heading 1")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let font = attrs[.font] as? NSFont
+        XCTAssertEqual(font, theme.headingFont(level: 1))
+    }
+
+    func testHeadingLevel2Font() {
+        let result = render("## Heading 2")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let font = attrs[.font] as? NSFont
+        XCTAssertEqual(font, theme.headingFont(level: 2))
+    }
+
+    func testHeadingLevel3Font() {
+        let result = render("### Heading 3")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let font = attrs[.font] as? NSFont
+        XCTAssertEqual(font, theme.headingFont(level: 3))
+    }
+
+    func testHeadingLevel4Font() {
+        let result = render("#### Heading 4")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let font = attrs[.font] as? NSFont
+        XCTAssertEqual(font, theme.headingFont(level: 4))
+    }
+
+    func testHeadingLevel5Font() {
+        let result = render("##### Heading 5")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let font = attrs[.font] as? NSFont
+        XCTAssertEqual(font, theme.headingFont(level: 5))
+    }
+
+    func testHeadingLevel6Font() {
+        let result = render("###### Heading 6")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let font = attrs[.font] as? NSFont
+        XCTAssertEqual(font, theme.headingFont(level: 6))
+    }
+
+    func testHeadingColors() {
+        // H1-H5 use text color, H6 uses subtle color.
+        for level in 1...6 {
+            let result = render(String(repeating: "#", count: level) + " Heading")
+            let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+            let color = attrs[.foregroundColor] as? NSColor
+            XCTAssertEqual(color, theme.headingColor(level: level), "Heading \(level) color mismatch")
+        }
+    }
+
+    func testHeadingAnchorID() {
+        let result = render("# Hello World")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let anchorID = attrs[.headingAnchorID] as? String
+        XCTAssertEqual(anchorID, "hello-world")
+    }
+
+    func testHeadingAnchorIDSpecialCharacters() {
+        let result = render("## What's New (2024)")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let anchorID = attrs[.headingAnchorID] as? String
+        XCTAssertEqual(anchorID, slugify("What's New (2024)"))
+    }
+
+    func testHeadingDividerH1() {
+        let result = render("# Title")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let hasDivider = attrs[.headingDivider] as? Bool
+        XCTAssertEqual(hasDivider, true)
+    }
+
+    func testHeadingDividerH2() {
+        let result = render("## Subtitle")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let hasDivider = attrs[.headingDivider] as? Bool
+        XCTAssertEqual(hasDivider, true)
+    }
+
+    func testHeadingNoDividerH3() {
+        let result = render("### Section")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let hasDivider = attrs[.headingDivider] as? Bool
+        XCTAssertNil(hasDivider)
+    }
+
+    func testHeadingParagraphStyle() {
+        let result = render("# Title")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let style = attrs[.paragraphStyle] as? NSParagraphStyle
+        XCTAssertNotNil(style)
+        // Heading paragraph style has 24pt before spacing.
+        XCTAssertEqual(style?.paragraphSpacingBefore, 24.0)
+    }
+
+    // MARK: - Paragraph Style
+
+    func testParagraphHasBodyParagraphStyle() {
+        let result = render("Some body text here.")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let style = attrs[.paragraphStyle] as? NSParagraphStyle
+        XCTAssertNotNil(style)
+        // Body paragraph style has 16pt spacing.
+        XCTAssertEqual(style?.paragraphSpacing, 16.0)
+    }
+
+    // MARK: - Blockquote
+
+    func testBlockquoteTextColor() {
+        let result = render("> Quoted text")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let color = attrs[.foregroundColor] as? NSColor
+        XCTAssertEqual(color, theme.blockquoteTextColor)
+    }
+
+    func testBlockquoteHasParagraphStyleIndent() {
+        let result = render("> Quoted text")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let style = attrs[.paragraphStyle] as? NSParagraphStyle
+        XCTAssertNotNil(style)
+        // Blockquote paragraph style has indent.
+        XCTAssertGreaterThan(style?.headIndent ?? 0, 0)
+    }
+
+    func testBlockquoteRangeAttribute() {
+        let result = render("> Quoted text")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let isBlockquote = attrs[.blockquoteRange] as? Bool
+        XCTAssertEqual(isBlockquote, true)
+    }
+
+    func testBlockquoteSourceMap() {
+        let result = render("> Quoted text")
+        XCTAssertFalse(result.sourceMap.isEmpty)
+        let entry = result.sourceMap.entries[0]
+        XCTAssertEqual(entry.nodeType, .blockquote)
+    }
+
+    // MARK: - Code Block
+
+    func testCodeBlockMonospaceFont() {
+        let result = render("```\nsome code\n```")
+        let text = result.attributedString.string
+        XCTAssertEqual(text, "some code")
+
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let font = attrs[.font] as? NSFont
+        XCTAssertEqual(font, theme.codeFont)
+    }
+
+    func testCodeBlockRangeAttribute() {
+        let result = render("```\nsome code\n```")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let isCodeBlock = attrs[.codeBlockRange] as? Bool
+        XCTAssertEqual(isCodeBlock, true)
+    }
+
+    func testCodeBlockLanguageAttribute() {
+        let result = render("```swift\nlet x = 1\n```")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let language = attrs[.codeBlockLanguage] as? String
+        XCTAssertEqual(language, "swift")
+    }
+
+    func testCodeBlockNoLanguageAttribute() {
+        let result = render("```\nsome code\n```")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let language = attrs[.codeBlockLanguage] as? String
+        XCTAssertNil(language)
+    }
+
+    func testCodeBlockParagraphStyle() {
+        let result = render("```\nsome code\n```")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let style = attrs[.paragraphStyle] as? NSParagraphStyle
+        XCTAssertNotNil(style)
+    }
+
+    func testCodeBlockSyntaxHighlighting() {
+        // A Swift code block with a keyword should have syntax highlighting.
+        let result = render("```swift\nlet x = 42\n```")
+        let text = result.attributedString.string
+        XCTAssertEqual(text, "let x = 42")
+
+        // "let" is a keyword — should have syntax keyword color, not the default code text color.
+        let keywordAttrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let keywordColor = keywordAttrs[.foregroundColor] as? NSColor
+        let expectedKeywordColor = theme.syntaxNSColor(for: \.keyword)
+        XCTAssertEqual(keywordColor, expectedKeywordColor, "Keyword 'let' should be syntax-colored")
+
+        // "42" (a number) should also be syntax-colored.
+        let numberOffset = text.distance(from: text.startIndex, to: text.range(of: "42")!.lowerBound)
+        let numberAttrs = result.attributedString.attributes(at: numberOffset, effectiveRange: nil)
+        let numberColor = numberAttrs[.foregroundColor] as? NSColor
+        let expectedNumberColor = theme.syntaxNSColor(for: \.number)
+        XCTAssertEqual(numberColor, expectedNumberColor, "Number '42' should be syntax-colored")
+    }
+
+    func testCodeBlockStripsTrailingNewline() {
+        let result = render("```\nhello\n```")
+        XCTAssertEqual(result.attributedString.string, "hello")
+    }
+
+    func testCodeBlockSourceMap() {
+        let result = render("```\ncode\n```")
+        XCTAssertFalse(result.sourceMap.isEmpty)
+        let entry = result.sourceMap.entries[0]
+        XCTAssertEqual(entry.nodeType, .codeBlock)
+    }
+
+    // MARK: - Unordered List
+
+    func testUnorderedListBullets() {
+        let result = render("- First\n- Second\n- Third")
+        let text = result.attributedString.string
+        // Each item should have bullet marker.
+        XCTAssertTrue(text.contains("\u{2022}"), "Should contain bullet character")
+        XCTAssertTrue(text.contains("First"))
+        XCTAssertTrue(text.contains("Second"))
+        XCTAssertTrue(text.contains("Third"))
+    }
+
+    func testUnorderedListItemParagraphStyle() {
+        let result = render("- Item")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let style = attrs[.paragraphStyle] as? NSParagraphStyle
+        XCTAssertNotNil(style)
+        // Level 0 list item should have indent > 0.
+        XCTAssertGreaterThan(style?.headIndent ?? 0, 0)
+    }
+
+    func testUnorderedListSourceMap() {
+        let result = render("- First\n- Second")
+        let listEntries = result.sourceMap.entries.filter { $0.nodeType == .list }
+        XCTAssertEqual(listEntries.count, 1)
+    }
+
+    // MARK: - Ordered List
+
+    func testOrderedListNumbers() {
+        let result = render("1. First\n2. Second\n3. Third")
+        let text = result.attributedString.string
+        XCTAssertTrue(text.contains("1."), "Should contain numbered marker")
+        XCTAssertTrue(text.contains("2."))
+        XCTAssertTrue(text.contains("3."))
+        XCTAssertTrue(text.contains("First"))
+        XCTAssertTrue(text.contains("Second"))
+        XCTAssertTrue(text.contains("Third"))
+    }
+
+    func testOrderedListItemParagraphStyle() {
+        let result = render("1. Item")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let style = attrs[.paragraphStyle] as? NSParagraphStyle
+        XCTAssertNotNil(style)
+        // Level 0 list item should have indent > 0.
+        XCTAssertGreaterThan(style?.headIndent ?? 0, 0)
+    }
+
+    // MARK: - Nested Lists
+
+    func testNestedListIncreasingIndent() {
+        let result = render("- Outer\n  - Inner")
+        let text = result.attributedString.string
+
+        XCTAssertTrue(text.contains("Outer"))
+        XCTAssertTrue(text.contains("Inner"))
+
+        // Find the "Inner" text and check its paragraph style has greater indent than "Outer".
+        let outerRange = (text as NSString).range(of: "\u{2022}\tOuter")
+        let innerRange = (text as NSString).range(of: "\u{2022}\tInner")
+        XCTAssertNotEqual(outerRange.location, NSNotFound)
+        XCTAssertNotEqual(innerRange.location, NSNotFound)
+
+        let outerStyle = result.attributedString.attributes(at: outerRange.location, effectiveRange: nil)[.paragraphStyle] as? NSParagraphStyle
+        let innerStyle = result.attributedString.attributes(at: innerRange.location, effectiveRange: nil)[.paragraphStyle] as? NSParagraphStyle
+
+        XCTAssertNotNil(outerStyle)
+        XCTAssertNotNil(innerStyle)
+        XCTAssertGreaterThan(innerStyle?.headIndent ?? 0, outerStyle?.headIndent ?? 0,
+                             "Nested list should have greater indent")
+    }
+
+    // MARK: - Task List
+
+    func testTaskListUnchecked() {
+        let result = render("- [ ] Todo item")
+        let text = result.attributedString.string
+        XCTAssertTrue(text.contains("\u{2610}"), "Should contain unchecked checkbox (☐)")
+        XCTAssertTrue(text.contains("Todo item"))
+    }
+
+    func testTaskListChecked() {
+        let result = render("- [x] Done item")
+        let text = result.attributedString.string
+        XCTAssertTrue(text.contains("\u{2611}"), "Should contain checked checkbox (☑)")
+        XCTAssertTrue(text.contains("Done item"))
+    }
+
+    func testTaskListMixed() {
+        let result = render("- [x] Done\n- [ ] Not done")
+        let text = result.attributedString.string
+        XCTAssertTrue(text.contains("\u{2611}"), "Should contain checked checkbox")
+        XCTAssertTrue(text.contains("\u{2610}"), "Should contain unchecked checkbox")
+    }
+
+    // MARK: - Thematic Break
+
+    func testThematicBreak() {
+        let result = render("---")
+        let text = result.attributedString.string
+        // Should contain box-drawing horizontal line characters.
+        XCTAssertTrue(text.contains("\u{2500}"), "Should contain horizontal line character")
+
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let isThematicBreak = attrs[.thematicBreak] as? Bool
+        XCTAssertEqual(isThematicBreak, true)
+
+        let color = attrs[.foregroundColor] as? NSColor
+        XCTAssertEqual(color, theme.thematicBreakColor)
+    }
+
+    func testThematicBreakSourceMap() {
+        let result = render("---")
+        let entries = result.sourceMap.entries.filter { $0.nodeType == .thematicBreak }
+        XCTAssertEqual(entries.count, 1)
+    }
+
+    // MARK: - HTML Block
+
+    func testHTMLBlockMonospaceFont() {
+        let result = render("<div>\n  <p>Hello</p>\n</div>")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let font = attrs[.font] as? NSFont
+        XCTAssertEqual(font, theme.codeFont)
+    }
+
+    func testHTMLBlockSubtleColor() {
+        let result = render("<div>\n  <p>Hello</p>\n</div>")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let color = attrs[.foregroundColor] as? NSColor
+        XCTAssertEqual(color, theme.subtleColor)
+    }
+
+    func testHTMLBlockSourceMap() {
+        let result = render("<div>\n  <p>Hello</p>\n</div>")
+        let entries = result.sourceMap.entries.filter { $0.nodeType == .htmlBlock }
+        XCTAssertEqual(entries.count, 1)
+    }
+
+    // MARK: - Mixed Block Types
+
+    func testMixedDocumentBlockTypes() {
+        let markdown = """
+        # Title
+
+        Some paragraph text.
+
+        - List item 1
+        - List item 2
+
+        > A blockquote
+
+        ---
+
+        ```swift
+        let x = 1
+        ```
+        """
+        let result = render(markdown)
+        let text = result.attributedString.string
+
+        // All block types should be present.
+        XCTAssertTrue(text.contains("Title"))
+        XCTAssertTrue(text.contains("Some paragraph text."))
+        XCTAssertTrue(text.contains("List item 1"))
+        XCTAssertTrue(text.contains("List item 2"))
+        XCTAssertTrue(text.contains("A blockquote"))
+        XCTAssertTrue(text.contains("\u{2500}"))  // thematic break
+        XCTAssertTrue(text.contains("let x = 1"))
+
+        // Source map should have entries for all block types.
+        let nodeTypes = result.sourceMap.entries.map { $0.nodeType }
+        XCTAssertTrue(nodeTypes.contains(.heading(level: 1)))
+        XCTAssertTrue(nodeTypes.contains(.paragraph))
+        XCTAssertTrue(nodeTypes.contains(.list))
+        XCTAssertTrue(nodeTypes.contains(.blockquote))
+        XCTAssertTrue(nodeTypes.contains(.thematicBreak))
+        XCTAssertTrue(nodeTypes.contains(.codeBlock))
+    }
+
+    func testHeadingFollowedByParagraph() {
+        let result = render("# Title\n\nBody text.")
+        let text = result.attributedString.string
+        XCTAssertTrue(text.contains("Title"))
+        XCTAssertTrue(text.contains("Body text."))
+
+        // Title should have heading font, body should have body font.
+        let titleAttrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let titleFont = titleAttrs[.font] as? NSFont
+        XCTAssertEqual(titleFont, theme.headingFont(level: 1))
+
+        // Find "Body" text offset.
+        let bodyOffset = (text as NSString).range(of: "Body").location
+        XCTAssertNotEqual(bodyOffset, NSNotFound)
+        let bodyAttrs = result.attributedString.attributes(at: bodyOffset, effectiveRange: nil)
+        let bodyFont = bodyAttrs[.font] as? NSFont
+        XCTAssertEqual(bodyFont, theme.bodyFont)
     }
 }

@@ -24,11 +24,26 @@ extension NSAttributedString.Key {
     /// Marks inline code spans for custom background drawing in the text view.
     static let inlineCodeBackground = NSAttributedString.Key("pellucid.inlineCodeBackground")
 
-    /// Marks code block ranges for custom background/border drawing (Step 4).
+    /// Marks code block ranges for custom background/border drawing.
     static let codeBlockRange = NSAttributedString.Key("pellucid.codeBlockRange")
+
+    /// Stores the language tag for a code block (e.g., "swift", "python").
+    static let codeBlockLanguage = NSAttributedString.Key("pellucid.codeBlockLanguage")
 
     /// Stores the 0-based source line range for Cmd+click → editor integration.
     static let sourceLineRange = NSAttributedString.Key("pellucid.sourceLineRange")
+
+    /// Stores the slugified heading anchor ID for scroll-to-heading.
+    static let headingAnchorID = NSAttributedString.Key("pellucid.headingAnchorID")
+
+    /// Marks a heading that should have a divider drawn beneath it (H1, H2).
+    static let headingDivider = NSAttributedString.Key("pellucid.headingDivider")
+
+    /// Marks a thematic break for custom drawing.
+    static let thematicBreak = NSAttributedString.Key("pellucid.thematicBreak")
+
+    /// Marks a blockquote range for accent bar drawing.
+    static let blockquoteRange = NSAttributedString.Key("pellucid.blockquoteRange")
 }
 
 // MARK: - Render Result
@@ -48,8 +63,9 @@ struct RenderResult: @unchecked Sendable {
 /// Walks a swift-markdown AST `Document` and produces an `NSAttributedString`
 /// with a companion `SourceMap` for bidirectional source ↔ rendered mapping.
 ///
-/// This implementation handles inline nodes. Block-level rendering (headings,
-/// lists, blockquotes, etc.) will be added in Step 4.
+/// Handles both inline nodes (text, emphasis, strong, code, links, images) and
+/// block-level nodes (headings, paragraphs, lists, blockquotes, code blocks,
+/// thematic breaks, HTML blocks).
 struct MarkdownRenderer: MarkupVisitor {
 
     typealias Result = NSMutableAttributedString
@@ -69,6 +85,12 @@ struct MarkdownRenderer: MarkupVisitor {
 
     /// Whether we are currently inside a link (to suppress nested link styling).
     private var insideLink = false
+
+    /// Current list nesting depth (0-based). Incremented for each nested list.
+    private var listNestingLevel = -1
+
+    /// Whether we are currently inside a blockquote (to apply blockquote text color).
+    private var insideBlockquote = false
 
     // MARK: - Public API
 
@@ -113,11 +135,11 @@ struct MarkdownRenderer: MarkupVisitor {
     private var currentAttributes: [NSAttributedString.Key: Any] {
         [
             .font: currentFont,
-            .foregroundColor: theme.textColor,
+            .foregroundColor: insideBlockquote ? theme.blockquoteTextColor : theme.textColor,
         ]
     }
 
-    // MARK: - MarkupVisitor — Document & Block Stubs
+    // MARK: - MarkupVisitor — Document
 
     mutating func defaultVisit(_ markup: Markup) -> NSMutableAttributedString {
         // Walk children by default, concatenating results.
@@ -133,8 +155,11 @@ struct MarkdownRenderer: MarkupVisitor {
         var isFirstBlock = true
         for child in document.children {
             if !isFirstBlock {
-                // Separate top-level blocks with double-newline.
-                result.append(NSAttributedString(string: "\n\n", attributes: currentAttributes))
+                // Single newline between blocks — paragraph styles handle visual spacing.
+                result.append(NSAttributedString(string: "\n", attributes: [
+                    .font: theme.bodyFont,
+                    .foregroundColor: theme.textColor,
+                ]))
             }
             let blockStart = result.length
             result.append(visit(child))
@@ -147,12 +172,194 @@ struct MarkdownRenderer: MarkupVisitor {
         return result
     }
 
+    // MARK: - MarkupVisitor — Block Nodes
+
     mutating func visitParagraph(_ paragraph: Paragraph) -> NSMutableAttributedString {
         let result = NSMutableAttributedString()
         for child in paragraph.children {
             result.append(visit(child))
         }
+        // Apply body or blockquote paragraph style to the entire paragraph.
+        let paragraphStyle = insideBlockquote ? theme.blockquoteParagraphStyle : theme.bodyParagraphStyle
+        result.addAttribute(
+            .paragraphStyle,
+            value: paragraphStyle,
+            range: NSRange(location: 0, length: result.length)
+        )
         return result
+    }
+
+    mutating func visitHeading(_ heading: Heading) -> NSMutableAttributedString {
+        let level = heading.level
+        let headingFont = theme.headingFont(level: level)
+        let headingColor = theme.headingColor(level: level)
+        let anchorID = slugify(heading.plainText)
+
+        let result = visitChildren(of: heading)
+        let fullRange = NSRange(location: 0, length: result.length)
+
+        // Apply heading font and color.
+        result.addAttribute(.font, value: headingFont, range: fullRange)
+        result.addAttribute(.foregroundColor, value: headingColor, range: fullRange)
+
+        // Apply heading paragraph style.
+        result.addAttribute(.paragraphStyle, value: theme.headingParagraphStyle, range: fullRange)
+
+        // Anchor ID for scroll-to-heading.
+        result.addAttribute(.headingAnchorID, value: anchorID, range: fullRange)
+
+        // Divider marker for H1/H2.
+        if theme.headingHasDivider(level: level) {
+            result.addAttribute(.headingDivider, value: true, range: fullRange)
+        }
+
+        return result
+    }
+
+    mutating func visitBlockQuote(_ blockQuote: BlockQuote) -> NSMutableAttributedString {
+        let previousInsideBlockquote = insideBlockquote
+        insideBlockquote = true
+
+        let result = NSMutableAttributedString()
+        var isFirstChild = true
+        for child in blockQuote.children {
+            if !isFirstChild {
+                result.append(NSAttributedString(string: "\n", attributes: [
+                    .font: theme.bodyFont,
+                    .foregroundColor: theme.blockquoteTextColor,
+                ]))
+            }
+            result.append(visit(child))
+            isFirstChild = false
+        }
+
+        let fullRange = NSRange(location: 0, length: result.length)
+
+        // Mark the entire blockquote for accent bar drawing.
+        result.addAttribute(.blockquoteRange, value: true, range: fullRange)
+
+        insideBlockquote = previousInsideBlockquote
+        return result
+    }
+
+    mutating func visitCodeBlock(_ codeBlock: CodeBlock) -> NSMutableAttributedString {
+        // Strip trailing newline from code (CodeBlock.code often ends with \n).
+        var code = codeBlock.code
+        while code.hasSuffix("\n") {
+            code.removeLast()
+        }
+
+        let language = codeBlock.language?.lowercased()
+        let result: NSMutableAttributedString
+
+        // Attempt syntax highlighting if a language grammar is available.
+        if let language, let grammar = grammars[language] {
+            let tokens = tokenize(code: code, grammar: grammar)
+            result = buildSyntaxHighlightedString(code: code, tokens: tokens)
+        } else {
+            result = NSMutableAttributedString(string: code, attributes: [
+                .font: theme.codeFont,
+                .foregroundColor: theme.codeTextColor,
+            ])
+        }
+
+        let fullRange = NSRange(location: 0, length: result.length)
+
+        // Apply code block paragraph style.
+        result.addAttribute(.paragraphStyle, value: theme.codeBlockParagraphStyle, range: fullRange)
+
+        // Mark the entire range for code block background/border drawing.
+        result.addAttribute(.codeBlockRange, value: true, range: fullRange)
+
+        // Store the language tag.
+        if let language {
+            result.addAttribute(.codeBlockLanguage, value: language, range: fullRange)
+        }
+
+        return result
+    }
+
+    mutating func visitUnorderedList(_ unorderedList: UnorderedList) -> NSMutableAttributedString {
+        listNestingLevel += 1
+        let result = NSMutableAttributedString()
+        var isFirstItem = true
+
+        for child in unorderedList.children {
+            if !isFirstItem {
+                result.append(NSAttributedString(string: "\n", attributes: [
+                    .font: theme.bodyFont,
+                    .foregroundColor: insideBlockquote ? theme.blockquoteTextColor : theme.textColor,
+                ]))
+            }
+            if let listItem = child as? ListItem {
+                let itemResult = renderListItem(listItem, ordered: false, index: 0)
+                result.append(itemResult)
+            } else {
+                result.append(visit(child))
+            }
+            isFirstItem = false
+        }
+
+        listNestingLevel -= 1
+        return result
+    }
+
+    mutating func visitOrderedList(_ orderedList: OrderedList) -> NSMutableAttributedString {
+        listNestingLevel += 1
+        let result = NSMutableAttributedString()
+        var isFirstItem = true
+        var index = Int(orderedList.startIndex)
+
+        for child in orderedList.children {
+            if !isFirstItem {
+                result.append(NSAttributedString(string: "\n", attributes: [
+                    .font: theme.bodyFont,
+                    .foregroundColor: insideBlockquote ? theme.blockquoteTextColor : theme.textColor,
+                ]))
+            }
+            if let listItem = child as? ListItem {
+                let itemResult = renderListItem(listItem, ordered: true, index: index)
+                result.append(itemResult)
+                index += 1
+            } else {
+                result.append(visit(child))
+            }
+            isFirstItem = false
+        }
+
+        listNestingLevel -= 1
+        return result
+    }
+
+    mutating func visitListItem(_ listItem: ListItem) -> NSMutableAttributedString {
+        // ListItems are normally handled via renderListItem from the list visitor.
+        // This fallback handles the case where a ListItem appears outside a list context.
+        return renderListItem(listItem, ordered: false, index: 0)
+    }
+
+    mutating func visitThematicBreak(_ thematicBreak: ThematicBreak) -> NSMutableAttributedString {
+        let separator = String(repeating: "\u{2500}", count: 40)  // "─" box drawing
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: theme.bodyFont,
+            .foregroundColor: theme.thematicBreakColor,
+            .thematicBreak: true,
+            .paragraphStyle: theme.bodyParagraphStyle,
+        ]
+        return NSMutableAttributedString(string: separator, attributes: attrs)
+    }
+
+    mutating func visitHTMLBlock(_ htmlBlock: HTMLBlock) -> NSMutableAttributedString {
+        var html = htmlBlock.rawHTML
+        // Strip trailing newline.
+        while html.hasSuffix("\n") {
+            html.removeLast()
+        }
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: theme.codeFont,
+            .foregroundColor: theme.subtleColor,
+            .paragraphStyle: theme.codeBlockParagraphStyle,
+        ]
+        return NSMutableAttributedString(string: html, attributes: attrs)
     }
 
     // MARK: - MarkupVisitor — Inline Nodes
@@ -239,7 +446,150 @@ struct MarkdownRenderer: MarkupVisitor {
         NSMutableAttributedString(string: "\n", attributes: currentAttributes)
     }
 
-    // MARK: - Helpers
+    // MARK: - List Item Helpers
+
+    /// Renders a single list item with the appropriate bullet/number marker.
+    private mutating func renderListItem(
+        _ listItem: ListItem,
+        ordered: Bool,
+        index: Int
+    ) -> NSMutableAttributedString {
+        let level = max(0, listNestingLevel)
+        let textColor = insideBlockquote ? theme.blockquoteTextColor : theme.textColor
+
+        // Determine the marker.
+        let marker: String
+        if let checkbox = listItem.checkbox {
+            marker = checkbox == .checked ? "\u{2611}\t" : "\u{2610}\t"  // ☑ / ☐
+        } else if ordered {
+            marker = "\(index).\t"
+        } else {
+            marker = "\u{2022}\t"  // •
+        }
+
+        let markerAttrs: [NSAttributedString.Key: Any] = [
+            .font: theme.bodyFont,
+            .foregroundColor: textColor,
+        ]
+        let result = NSMutableAttributedString(string: marker, attributes: markerAttrs)
+
+        // Track where this item's own text starts (before nested lists).
+        let itemContentStart = 0
+
+        // Render children. List items contain block children (paragraphs, nested lists, etc.).
+        var isFirstChild = true
+        for child in listItem.children {
+            if child is UnorderedList || child is OrderedList {
+                // Apply paragraph style to content so far, before appending nested list.
+                let paragraphStyle = theme.listItemParagraphStyle(level: level)
+                let contentRange = NSRange(location: itemContentStart, length: result.length - itemContentStart)
+                if contentRange.length > 0 {
+                    result.addAttribute(.paragraphStyle, value: paragraphStyle, range: contentRange)
+                }
+
+                // Nested list — insert newline before it.
+                result.append(NSAttributedString(string: "\n", attributes: markerAttrs))
+                result.append(visit(child))
+            } else {
+                // Inline content (paragraph, etc.) — render inline, no extra newline for first child.
+                if !isFirstChild {
+                    result.append(NSAttributedString(string: "\n", attributes: markerAttrs))
+                }
+                // For paragraphs inside list items, render children directly (skip paragraph wrapper).
+                if let paragraph = child as? Paragraph {
+                    result.append(visitChildren(of: paragraph))
+                } else {
+                    result.append(visit(child))
+                }
+            }
+            isFirstChild = false
+        }
+
+        // Apply list item paragraph style to any remaining un-styled content.
+        // For items without nested lists, this covers the entire result.
+        // For items with nested lists, this is a no-op if already applied above,
+        // but covers trailing content after the last nested list.
+        let paragraphStyle = theme.listItemParagraphStyle(level: level)
+
+        // Check if there are nested list children. If not, apply to entire range.
+        let hasNestedList = listItem.children.contains { $0 is UnorderedList || $0 is OrderedList }
+        if !hasNestedList {
+            result.addAttribute(
+                .paragraphStyle,
+                value: paragraphStyle,
+                range: NSRange(location: 0, length: result.length)
+            )
+        }
+
+        return result
+    }
+
+    // MARK: - Syntax Highlighting Helper
+
+    /// Builds an attributed string from tokenized code with syntax colors.
+    private func buildSyntaxHighlightedString(
+        code: String,
+        tokens: [Token]
+    ) -> NSMutableAttributedString {
+        guard !tokens.isEmpty else {
+            return NSMutableAttributedString(string: code, attributes: [
+                .font: theme.codeFont,
+                .foregroundColor: theme.codeTextColor,
+            ])
+        }
+
+        let sorted = tokens.sorted { $0.range.lowerBound < $1.range.lowerBound }
+        let result = NSMutableAttributedString()
+        var currentIndex = code.startIndex
+
+        let baseAttrs: [NSAttributedString.Key: Any] = [
+            .font: theme.codeFont,
+            .foregroundColor: theme.codeTextColor,
+        ]
+
+        for token in sorted {
+            guard let range = Range(token.range, in: code) else { continue }
+
+            // Append un-highlighted text before this token.
+            if currentIndex < range.lowerBound {
+                let plain = String(code[currentIndex..<range.lowerBound])
+                result.append(NSAttributedString(string: plain, attributes: baseAttrs))
+            }
+
+            // Append highlighted token.
+            let tokenText = String(code[range])
+            var tokenAttrs = baseAttrs
+            tokenAttrs[.foregroundColor] = syntaxColor(for: token.kind)
+            result.append(NSAttributedString(string: tokenText, attributes: tokenAttrs))
+
+            currentIndex = range.upperBound
+        }
+
+        // Append any remaining text after the last token.
+        if currentIndex < code.endIndex {
+            let trailing = String(code[currentIndex...])
+            result.append(NSAttributedString(string: trailing, attributes: baseAttrs))
+        }
+
+        return result
+    }
+
+    /// Maps a TokenKind to the corresponding NSColor from the theme's syntax palette.
+    private func syntaxColor(for kind: TokenKind) -> NSColor {
+        switch kind {
+        case .keyword: theme.syntaxNSColor(for: \.keyword)
+        case .string: theme.syntaxNSColor(for: \.string)
+        case .comment: theme.syntaxNSColor(for: \.comment)
+        case .number: theme.syntaxNSColor(for: \.number)
+        case .type: theme.syntaxNSColor(for: \.type)
+        case .function: theme.syntaxNSColor(for: \.function)
+        case .operator_: theme.syntaxNSColor(for: \.operator_)
+        case .attribute: theme.syntaxNSColor(for: \.attribute)
+        case .constant: theme.syntaxNSColor(for: \.constant)
+        }
+    }
+
+    // MARK: - General Helpers
 
     /// Visits all children of a markup node, concatenating their results.
     private mutating func visitChildren(of node: some Markup) -> NSMutableAttributedString {
