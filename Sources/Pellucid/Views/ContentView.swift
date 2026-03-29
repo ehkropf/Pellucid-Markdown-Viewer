@@ -14,12 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import AppKit
 import SwiftUI
 import MarkdownUI
-import os
-
-private let logger = Logger(subsystem: "com.pellucid.app", category: "ContentView")
 
 struct RawMarkdownKey: FocusedValueKey {
     typealias Value = String
@@ -113,7 +109,35 @@ struct ContentView: View {
                 } else if document.rawMarkdown.isEmpty {
                     emptyState
                 } else {
-                    markdownScrollView
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            MarkdownUI.Markdown(document.processedMarkdown, imageBaseURL: document.fileURL?.deletingLastPathComponent())
+                                .markdownCodeSyntaxHighlighter(AppCodeSyntaxHighlighter(palette: themeManager.selectedTheme.syntaxColors(isDark: isDark)))
+                                .markdownBlockStyle(\.codeBlock) { configuration in
+                                    codeBlockView(configuration: configuration)
+                                }
+                                .markdownImageProvider(.local)
+                                .markdownTheme(themeManager.selectedTheme.markdownTheme(isDark: isDark))
+                                .padding(.horizontal, 32)
+                                .padding(.vertical, 24)
+                                .frame(maxWidth: 860, alignment: .leading)
+                                .frame(maxWidth: .infinity)
+                                .textSelection(.enabled)
+                        }
+                        .background(themeManager.selectedTheme.windowBackground(isDark: isDark) ?? Color(.windowBackgroundColor))
+                        .focusedSceneValue(\.rawMarkdown, document.rawMarkdown)
+                        .onChange(of: selectedHeadingID) { _, newValue in
+                            if let id = newValue {
+                                withAnimation {
+                                    proxy.scrollTo(id, anchor: .top)
+                                }
+                                // Clear selection after scroll animation so the same heading can be re-selected
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                    selectedHeadingID = nil
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -140,51 +164,6 @@ struct ContentView: View {
                 }
             }
         }
-    }
-
-    private var markdownScrollView: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                markdownContent
-            }
-            .background(themeManager.selectedTheme.windowBackground(isDark: isDark) ?? Color(.windowBackgroundColor))
-            .focusedSceneValue(\.rawMarkdown, document.rawMarkdown)
-            .onChange(of: selectedHeadingID) { _, newValue in
-                if let id = newValue {
-                    withAnimation {
-                        proxy.scrollTo(id, anchor: .top)
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        selectedHeadingID = nil
-                    }
-                }
-            }
-        }
-    }
-
-    private var markdownContent: some View {
-        MarkdownUI.Markdown(document.processedMarkdown, imageBaseURL: document.fileURL?.deletingLastPathComponent())
-            .markdownCodeSyntaxHighlighter(AppCodeSyntaxHighlighter(palette: themeManager.selectedTheme.syntaxColors(isDark: isDark)))
-            .markdownBlockStyle(\.codeBlock) { configuration in
-                codeBlockView(configuration: configuration)
-            }
-            .markdownBlockStyle(\.heading1) { c in headingJumpGesture(c) }
-            .markdownBlockStyle(\.heading2) { c in headingJumpGesture(c) }
-            .markdownBlockStyle(\.heading3) { c in headingJumpGesture(c) }
-            .markdownBlockStyle(\.heading4) { c in headingJumpGesture(c) }
-            .markdownBlockStyle(\.heading5) { c in headingJumpGesture(c) }
-            .markdownBlockStyle(\.heading6) { c in headingJumpGesture(c) }
-            .markdownBlockStyle(\.paragraph) { c in blockJumpGesture(c, blockType: .paragraph) }
-            .markdownBlockStyle(\.blockquote) { c in blockJumpGesture(c, blockType: .blockquote) }
-            .markdownBlockStyle(\.listItem) { c in blockJumpGesture(c, blockType: .listItem) }
-            .markdownBlockStyle(\.table) { c in blockJumpGesture(c, blockType: .table) }
-            .markdownImageProvider(.local)
-            .markdownTheme(themeManager.selectedTheme.markdownTheme(isDark: isDark))
-            .padding(.horizontal, 32)
-            .padding(.vertical, 24)
-            .frame(maxWidth: 860, alignment: .leading)
-            .frame(maxWidth: .infinity)
-            .textSelection(.enabled)
     }
 
     private func errorBanner(_ message: String) -> some View {
@@ -218,64 +197,24 @@ struct ContentView: View {
     @ViewBuilder
     private func codeBlockView(configuration: CodeBlockConfiguration) -> some View {
         let lang = configuration.language?.lowercased()
-        Group {
-            if lang == "math" || lang == "latex" {
-                MathBlockView(latex: configuration.content.trimmingCharacters(in: .whitespacesAndNewlines), textColor: themeManager.selectedTheme.mathTextColor(isDark: isDark))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .markdownMargin(top: .em(0.8), bottom: .em(0.8))
-            } else if lang == "plantuml" {
-                DiagramBlockView(source: configuration.content)
-            } else {
-                configuration.label
-                    .relativeLineSpacing(.em(0.225))
-                    .markdownTextStyle {
-                        FontFamilyVariant(.monospaced)
-                        FontSize(.em(0.85))
-                    }
-                    .padding(16)
-                    .background(themeManager.selectedTheme.codeBlockBackground(isDark: isDark))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .markdownMargin(top: .zero, bottom: .em(0.8))
-            }
-        }
-        .onTapGesture {
-            if NSEvent.modifierFlags.contains(.command) {
-                jumpToSource(blockType: .codeBlock, contentKey: String(configuration.content.prefix(200)))
-            }
-        }
-    }
-
-    // MARK: - Jump to source
-
-    @ViewBuilder
-    private func headingJumpGesture(_ configuration: BlockConfiguration) -> some View {
-        configuration.label.onTapGesture {
-            if NSEvent.modifierFlags.contains(.command) {
-                jumpToSource(blockType: .heading, contentKey: configuration.content.renderPlainText())
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func blockJumpGesture(_ configuration: BlockConfiguration, blockType: SourceBlockType) -> some View {
-        configuration.label.onTapGesture {
-            if NSEvent.modifierFlags.contains(.command) {
-                jumpToSource(blockType: blockType, contentKey: String(configuration.content.renderPlainText().prefix(200)))
-            }
-        }
-    }
-
-    private func jumpToSource(blockType: SourceBlockType, contentKey: String) {
-        guard let url = document.fileURL else { return }
-        guard let line = document.sourceLocationMap.sourceLine(for: blockType, contentKey: contentKey) else {
-            logger.debug("No source location for \(String(describing: blockType))")
-            return
-        }
-        do {
-            try MacVimEditor().openFile(url, atLine: line)
-        } catch {
-            logger.warning("Jump to source failed: \(error.localizedDescription)")
+        if lang == "math" || lang == "latex" {
+            MathBlockView(latex: configuration.content.trimmingCharacters(in: .whitespacesAndNewlines), textColor: themeManager.selectedTheme.mathTextColor(isDark: isDark))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .markdownMargin(top: .em(0.8), bottom: .em(0.8))
+        } else if lang == "plantuml" {
+            DiagramBlockView(source: configuration.content)
+        } else {
+            configuration.label
+                .relativeLineSpacing(.em(0.225))
+                .markdownTextStyle {
+                    FontFamilyVariant(.monospaced)
+                    FontSize(.em(0.85))
+                }
+                .padding(16)
+                .background(themeManager.selectedTheme.codeBlockBackground(isDark: isDark))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .markdownMargin(top: .zero, bottom: .em(0.8))
         }
     }
 }

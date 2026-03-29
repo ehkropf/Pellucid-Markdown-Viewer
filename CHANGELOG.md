@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Revert Cmd+click jump-to-editor feature (broke rendering)
+
 ## 1.1.0 — 2026-03-28
 
 - Rename app from md_viewr to Pellucid

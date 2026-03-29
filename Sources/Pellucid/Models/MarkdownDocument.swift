@@ -28,7 +28,6 @@ final class MarkdownDocument: ObservableObject {
     @Published private(set) var tocEntries: [TOCEntry] = []
     @Published var errorMessage: String?
     @Published private(set) var processedMarkdown: String = ""
-    @Published private(set) var sourceLocationMap: SourceLocationMap = .empty
 
     private let fileWatcher = FileWatcher()
 
@@ -61,17 +60,11 @@ final class MarkdownDocument: ObservableObject {
 
             let document = Document(parsing: content)
             tocEntries = TOCExtractor.extractTOC(from: document)
-            // Build source map from processedMarkdown so content keys match what MarkdownUI renders
-            // (e.g., $$...$$ blocks become ```math fenced blocks). Line numbers are preserved
-            // because MathPreprocessor replaces delimiters line-for-line.
-            let processedDoc = Document(parsing: processedMarkdown)
-            sourceLocationMap = SourceLocationMap.extract(from: processedDoc)
         } catch {
             errorMessage = "Error reading file: \(error.localizedDescription)"
             rawMarkdown = ""
             processedMarkdown = ""
             tocEntries = []
-            sourceLocationMap = .empty
         }
     }
 }

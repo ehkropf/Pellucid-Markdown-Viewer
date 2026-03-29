@@ -113,13 +113,11 @@ extension Heading {
     /// Extracts the plain text content, stripping inline markup.
     /// Matches MarkdownUI's `renderPlainText()` behavior.
     var plainText: String {
-        children.compactMap { extractInlineText(from: $0) }.joined()
+        children.compactMap { extractPlainText(from: $0) }.joined()
     }
 }
 
-/// Extracts plain text from inline markup nodes, stripping formatting.
-/// Shared by TOCExtractor (heading text) and SourceLocationMap (content keys).
-func extractInlineText(from markup: any Markup) -> String? {
+private func extractPlainText(from markup: any Markup) -> String? {
     if let text = markup as? Markdown.Text {
         return text.string
     } else if let code = markup as? InlineCode {
@@ -129,7 +127,7 @@ func extractInlineText(from markup: any Markup) -> String? {
     } else if markup is LineBreak {
         return "\n"
     } else if let container = markup as? (any InlineContainer) {
-        return container.children.compactMap { extractInlineText(from: $0) }.joined()
+        return container.children.compactMap { extractPlainText(from: $0) }.joined()
     }
     return nil
 }
