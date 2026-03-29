@@ -87,28 +87,32 @@ cp -R build/Pellucid.app /Applications/
 
 ## Usage
 
-```bash
-# Open with a file
-open build/Pellucid.app test.md
+Once installed, open any markdown file with:
 
-# Or run directly
-build/Pellucid.app/Contents/MacOS/Pellucid ~/notes/readme.md
+```bash
+open -a Pellucid file.md
+```
+
+Or during development:
+
+```bash
+make open          # build and launch
 ```
 
 You can also:
-- **Drag and drop** a `.md` file onto the window
+- **Drag and drop** a `.md` file onto the app icon or window
 - **File > Open** (⌘O) to browse for a file
-- Double-click a `.md` file if Pellucid is set as the handler
+- Double-click a `.md` file if Pellucid is set as the default handler
 
 ## Architecture
 
 ```
-Pellucid/
-  App/           — entry point, AppDelegate, menu commands
-  Models/        — MarkdownDocument, TOCEntry, FileWatcher
-  Views/         — ContentView, TOCSidebarView, MathBlockView, DiagramBlockView
-  Services/      — TOCExtractor, SyntaxHighlighter, PlantUMLRenderer
-  Utilities/     — Slugify
+Sources/Pellucid/
+  App/           — @main entry point (PellucidApp), menu commands (AppCommands)
+  Models/        — MarkdownDocument, WindowManager, FileIdentity, TOCEntry, FileWatcher, ThemeManager
+  Views/         — DocumentWindowView, ContentView, TOCSidebarView, MathBlockView, DiagramBlockView
+  Services/      — TOCExtractor, SyntaxHighlighter, PlantUMLRenderer, LocalImageProvider
+  Utilities/     — Slugify, MathPreprocessor, Clipboard
 ```
 
 Built entirely with Swift Package Manager — no Xcode project required.

@@ -56,7 +56,7 @@ Makefile         — build, test, clean, portindex, checksums targets
 - Code blocks dispatch via `.markdownBlockStyle(\.codeBlock)`: `math`/`latex` → MathBlockView, `plantuml` → DiagramBlockView, else → syntax-highlighted
 - TOC extracted from swift-markdown AST via `MarkupWalker`, displayed in `NavigationSplitView` sidebar
 - `ScrollViewReader` handles click-to-scroll from TOC to heading
-- FileWatcher uses `DispatchSource` with 200ms debounce; handles atomic writes (delete+recreate)
+- FileWatcher uses `DispatchSource` with 250ms trailing-edge debounce; handles atomic writes (delete+recreate)
 - Sidebar visibility persisted via `@SceneStorage` string bridge with race-safe restore guard (`didRestoreState`)
 - `ThemeManager` (`@MainActor @Observable` singleton) manages app-wide theme (Default, Solarized) via `AppTheme` enum; system appearance drives light/dark
 - `MathPreprocessor` converts `$$...$$` block delimiters to fenced ```math blocks before parsing

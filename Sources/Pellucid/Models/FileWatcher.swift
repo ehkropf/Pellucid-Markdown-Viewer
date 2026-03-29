@@ -32,9 +32,9 @@ final class FileWatcher {
     /// Called when the watcher fails to attach or loses contact with the file.
     var onWatchFailed: ((_ reason: String) -> Void)?
 
-    /// How long to wait after the first event before processing.
-    /// Editors often write in multiple steps (e.g., vim does delete + create).
-    let coalesceInterval: TimeInterval = 0.2
+    /// How long to wait after the last event before processing (trailing-edge debounce).
+    /// Resets on each new event so the file is read only after writes settle.
+    let debounceInterval: TimeInterval = 0.25
 
     /// Delay for the verification pass that catches missed events.
     let verifyInterval: TimeInterval = 0.3
@@ -85,7 +85,7 @@ final class FileWatcher {
                     // since the editor may recreate the file.
                     self.restartAfterDelete()
                 } else {
-                    self.coalesceNotify()
+                    self.debounceNotify()
                 }
             }
         }
@@ -103,12 +103,11 @@ final class FileWatcher {
         source?.resume()
     }
 
-    /// Coalesce events: start a timer on the first event, let subsequent
-    /// events accumulate, then process once. A verification pass afterwards
-    /// catches any writes that DispatchSource failed to deliver.
-    private func coalesceNotify() {
-        // If a timer is already running, it will pick up this change — don't restart it
-        guard coalesceTimer == nil else { return }
+    /// Trailing-edge debounce: every event resets the timer so we only
+    /// read the file after writes have settled. A verification pass
+    /// afterwards catches any events DispatchSource failed to deliver.
+    private func debounceNotify() {
+        coalesceTimer?.cancel()
 
         let workItem = DispatchWorkItem { [weak self] in
             MainActor.assumeIsolated {
@@ -119,12 +118,12 @@ final class FileWatcher {
                     self.lastModTime = currentModTime
                     self.onChange?()
                 }
-                // Schedule a verification pass to catch any trailing writes
+                // Schedule a verification pass to catch any missed events
                 self.scheduleVerification()
             }
         }
         coalesceTimer = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + coalesceInterval, execute: workItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + debounceInterval, execute: workItem)
     }
 
     /// Follow-up check using file modification time — catches events that
@@ -164,7 +163,7 @@ final class FileWatcher {
         let maxAttempts = 5
         if FileManager.default.fileExists(atPath: url.path) {
             startWatching(url: url)
-            coalesceNotify()
+            debounceNotify()
         } else if attempt < maxAttempts {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                 self?.tryReopen(url: url, attempt: attempt + 1)

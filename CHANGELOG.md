@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.2 — 2026-03-29
+
+- Fix live reload missing rapid successive file changes (trailing-edge debounce replaces leading-edge coalesce)
+- Update README Usage and Architecture sections
+
 ## 1.1.1 — 2026-03-29
 
 - Add underline styling to links for better visual affordance
