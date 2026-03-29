@@ -14,6 +14,9 @@ Package.resolved
 # Worktrees
 .worktrees/
 
+# MacPorts build artifacts
+ports/*/work/
+
 # Claude
 .claude/
 docs/superpowers/

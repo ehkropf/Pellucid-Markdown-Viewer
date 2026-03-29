@@ -3,9 +3,12 @@
 ## Unreleased
 
 - Revert Cmd+click jump-to-editor feature (broke rendering)
-- Add underline styling to links for better visual distinction
+- Add underline styling to links for better visual affordance
+- Use pointer cursor instead of I-beam in rendered content
 - Fix relative links in markdown files (e.g., test.md link in README)
-- Open markdown file links within Pellucid instead of the system handler
+- Deduplicate file-open events: clicking a markdown link reuses existing window
+- `make open` now builds the app if needed
+- `make install` copies app to /Applications
 
 ## 1.1.0 — 2026-03-28
 

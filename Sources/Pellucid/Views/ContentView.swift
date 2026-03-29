@@ -122,15 +122,7 @@ struct ContentView: View {
                                 .padding(.vertical, 24)
                                 .frame(maxWidth: 860, alignment: .leading)
                                 .frame(maxWidth: .infinity)
-                                .textSelection(.enabled)
                         }
-                        .environment(\.openURL, OpenURLAction { url in
-                            if url.isFileURL, markdownExtensions.contains(url.pathExtension.lowercased()) {
-                                windowManager.openFile(url: url)
-                                return .handled
-                            }
-                            return .systemAction
-                        })
                         .background(themeManager.selectedTheme.windowBackground(isDark: isDark) ?? Color(.windowBackgroundColor))
                         .focusedSceneValue(\.rawMarkdown, document.rawMarkdown)
                         .onChange(of: selectedHeadingID) { _, newValue in

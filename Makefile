@@ -23,7 +23,12 @@ _assemble:
 	@echo "Built: $(APP_BUNDLE)"
 	@echo "Run:   open $(APP_BUNDLE)"
 
-open: ## Launch the built app
+install: app ## Install to /Applications (replaces existing)
+	rm -rf "/Applications/$(APP_NAME).app"
+	cp -R "$(APP_BUNDLE)" "/Applications/$(APP_NAME).app"
+	@echo "Installed: /Applications/$(APP_NAME).app"
+
+open: app ## Launch the built app
 	open "$(APP_BUNDLE)"
 
 test: ## Run tests
@@ -42,4 +47,4 @@ checksums: ## Print checksums for a release tarball (VERSION=x.y.z)
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*## "}; {printf "  %-15s %s\n", $$1, $$2}'
 
-.PHONY: app app-debug open test clean portindex checksums help
+.PHONY: app app-debug install open test clean portindex checksums help
