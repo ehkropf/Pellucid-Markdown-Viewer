@@ -335,6 +335,303 @@ final class MarkdownNSTextView: NSTextView {
         // which is what we want. No additional cursor rects needed.
     }
 
+    // MARK: - Cmd+Click → MacVim
+
+    override func mouseDown(with event: NSEvent) {
+        guard event.modifierFlags.contains(.command) else {
+            super.mouseDown(with: event)
+            return
+        }
+
+        let pointInView = convert(event.locationInWindow, from: nil)
+        let charIndex = charIndex(at: pointInView)
+
+        guard charIndex < (textStorage?.length ?? 0),
+              let entry = coordinator?.sourceMap.entry(at: charIndex),
+              let fileURL = coordinator?.fileURL
+        else {
+            super.mouseDown(with: event)
+            return
+        }
+
+        let line = entry.sourceLineRange.lowerBound + 1  // MacVim uses 1-based
+        launchMacVim(at: line, fileURL: fileURL)
+    }
+
+    /// Launches MacVim at the specified line number, trying common MacPorts, Homebrew,
+    /// and fallback paths.
+    private func launchMacVim(at line: Int, fileURL: URL) {
+        let candidatePaths = [
+            "/opt/local/bin/mvim",       // MacPorts (preferred)
+            "/usr/local/bin/mvim",       // Homebrew (Intel)
+            "/opt/homebrew/bin/mvim",    // Homebrew (Apple Silicon)
+        ]
+
+        var launchPath: String?
+
+        // Try known paths first.
+        for path in candidatePaths {
+            if FileManager.default.isExecutableFile(atPath: path) {
+                launchPath = path
+                break
+            }
+        }
+
+        // Fallback: use `which mvim` to find it on PATH.
+        if launchPath == nil {
+            let whichProcess = Process()
+            whichProcess.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+            whichProcess.arguments = ["mvim"]
+            let pipe = Pipe()
+            whichProcess.standardOutput = pipe
+            whichProcess.standardError = FileHandle.nullDevice
+            do {
+                try whichProcess.run()
+                whichProcess.waitUntilExit()
+                if whichProcess.terminationStatus == 0 {
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    let result = String(data: data, encoding: .utf8)?
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    if let result, !result.isEmpty,
+                       FileManager.default.isExecutableFile(atPath: result)
+                    {
+                        launchPath = result
+                    }
+                }
+            } catch {
+                Self.logger.warning("Failed to run 'which mvim': \(error.localizedDescription)")
+            }
+        }
+
+        guard let mvimPath = launchPath else {
+            Self.logger.warning("MacVim (mvim) not found in any known location")
+            return
+        }
+
+        do {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: mvimPath)
+            process.arguments = ["+\(line)", fileURL.path]
+            try process.run()
+            Self.logger.debug(
+                "Launched MacVim at line \(line) for \(fileURL.lastPathComponent)"
+            )
+        } catch {
+            Self.logger.error(
+                "Failed to launch MacVim: \(error.localizedDescription)"
+            )
+        }
+    }
+
+    // MARK: - Context Menu
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        let menu = NSMenu()
+        let pointInView = convert(event.locationInWindow, from: nil)
+        let charIndex = charIndex(at: pointInView)
+
+        // Store the click character index for menu actions.
+        contextMenuCharIndex = charIndex
+
+        guard let textStorage, charIndex < textStorage.length else {
+            return buildDefaultTextMenu(menu)
+        }
+
+        // Check if the click is on an attachment.
+        let attributes = textStorage.attributes(at: charIndex, effectiveRange: nil)
+
+        if let attachment = attributes[.attachment] as? (any MarkdownAttachment),
+           attachment.attachmentImage != nil
+        {
+            // Image/diagram/math attachment.
+            contextMenuAttachment = attachment
+            let copyImageItem = NSMenuItem(
+                title: "Copy Image",
+                action: #selector(contextMenuCopyImage(_:)),
+                keyEquivalent: ""
+            )
+            copyImageItem.target = self
+            menu.addItem(copyImageItem)
+
+            // If it's a table, also offer "Copy Table as Markdown".
+            if attachment is TableAttachment {
+                let copyTableItem = NSMenuItem(
+                    title: "Copy Table as Markdown",
+                    action: #selector(contextMenuCopyAttachmentMarkdown(_:)),
+                    keyEquivalent: ""
+                )
+                copyTableItem.target = self
+                menu.addItem(copyTableItem)
+            }
+
+            return menu
+        }
+
+        // Check if click is in a code block.
+        var codeBlockEffectiveRange = NSRange(location: 0, length: 0)
+        let codeBlockValue = textStorage.attribute(
+            .codeBlockRange,
+            at: charIndex,
+            effectiveRange: &codeBlockEffectiveRange
+        )
+
+        if codeBlockValue != nil {
+            contextMenuCodeBlockRange = codeBlockEffectiveRange
+
+            let copyCodeItem = NSMenuItem(
+                title: "Copy Code",
+                action: #selector(contextMenuCopyCode(_:)),
+                keyEquivalent: ""
+            )
+            copyCodeItem.target = self
+            menu.addItem(copyCodeItem)
+
+            let copyMarkdownItem = NSMenuItem(
+                title: "Copy as Markdown",
+                action: #selector(contextMenuCopyAsMarkdown(_:)),
+                keyEquivalent: ""
+            )
+            copyMarkdownItem.target = self
+            menu.addItem(copyMarkdownItem)
+
+            menu.addItem(.separator())
+
+            let openInVimItem = NSMenuItem(
+                title: "Open in MacVim",
+                action: #selector(contextMenuOpenInMacVim(_:)),
+                keyEquivalent: ""
+            )
+            openInVimItem.target = self
+            menu.addItem(openInVimItem)
+
+            return menu
+        }
+
+        // Default: text context menu.
+        return buildDefaultTextMenu(menu)
+    }
+
+    /// Builds the default text context menu with Copy, Copy as Markdown, and Open in MacVim.
+    private func buildDefaultTextMenu(_ menu: NSMenu) -> NSMenu {
+        let copyItem = NSMenuItem(
+            title: "Copy",
+            action: #selector(copy(_:)),
+            keyEquivalent: ""
+        )
+        copyItem.target = self
+        menu.addItem(copyItem)
+
+        let copyMarkdownItem = NSMenuItem(
+            title: "Copy as Markdown",
+            action: #selector(contextMenuCopyAsMarkdown(_:)),
+            keyEquivalent: ""
+        )
+        copyMarkdownItem.target = self
+        menu.addItem(copyMarkdownItem)
+
+        menu.addItem(.separator())
+
+        let openInVimItem = NSMenuItem(
+            title: "Open in MacVim",
+            action: #selector(contextMenuOpenInMacVim(_:)),
+            keyEquivalent: ""
+        )
+        openInVimItem.target = self
+        menu.addItem(openInVimItem)
+
+        return menu
+    }
+
+    // MARK: - Context Menu State
+
+    /// Character index where the context menu was invoked.
+    private var contextMenuCharIndex: Int = 0
+
+    /// The attachment under the context menu click (if any).
+    private var contextMenuAttachment: (any MarkdownAttachment)?
+
+    /// The code block range under the context menu click (if any).
+    private var contextMenuCodeBlockRange: NSRange?
+
+    /// Converts a point in the text view to a character index, accounting for
+    /// text container origin offset.
+    private func charIndex(at pointInView: NSPoint) -> Int {
+        guard let textContainer, let layoutManager else { return 0 }
+
+        var textPoint = pointInView
+        textPoint.x -= textContainerOrigin.x
+        textPoint.y -= textContainerOrigin.y
+
+        let glyphIndex = layoutManager.glyphIndex(
+            for: textPoint,
+            in: textContainer
+        )
+        return layoutManager.characterIndexForGlyph(at: glyphIndex)
+    }
+
+    // MARK: - Context Menu Actions
+
+    @objc private func contextMenuCopyImage(_ sender: Any?) {
+        guard let image = contextMenuAttachment?.attachmentImage else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects([image])
+        NotificationCenter.default.post(name: .didCopyToClipboard, object: nil)
+        Self.logger.debug("Copied image to pasteboard via context menu")
+    }
+
+    @objc private func contextMenuCopyAttachmentMarkdown(_ sender: Any?) {
+        guard let markdown = contextMenuAttachment?.sourceMarkdown,
+              !markdown.isEmpty
+        else { return }
+        copyToClipboard(markdown)
+        Self.logger.debug("Copied attachment markdown source via context menu")
+    }
+
+    @objc private func contextMenuCopyCode(_ sender: Any?) {
+        guard let textStorage,
+              let range = contextMenuCodeBlockRange,
+              range.location + range.length <= textStorage.length
+        else { return }
+
+        let codeText = textStorage.attributedSubstring(from: range).string
+        copyToClipboard(codeText)
+        Self.logger.debug("Copied code block via context menu (\(range.length) chars)")
+    }
+
+    @objc private func contextMenuCopyAsMarkdown(_ sender: Any?) {
+        // If there's a selection, copy its markdown source.
+        let selectedRange = self.selectedRange()
+        if selectedRange.length > 0 {
+            copyAsMarkdownSource(in: selectedRange)
+            return
+        }
+
+        // Otherwise, use the entry at the click point.
+        guard let coordinator,
+              let entry = coordinator.sourceMap.entry(at: contextMenuCharIndex)
+        else { return }
+
+        let lines = coordinator.rawMarkdown.components(separatedBy: "\n")
+        let lo = max(entry.sourceLineRange.lowerBound, 0)
+        let hi = min(entry.sourceLineRange.upperBound, lines.count)
+        guard lo < hi else { return }
+
+        let markdownText = lines[lo..<hi].joined(separator: "\n")
+        copyToClipboard(markdownText)
+        Self.logger.debug("Copied markdown source lines \(lo)-\(hi - 1) via context menu")
+    }
+
+    @objc private func contextMenuOpenInMacVim(_ sender: Any?) {
+        guard let coordinator,
+              let fileURL = coordinator.fileURL,
+              let entry = coordinator.sourceMap.entry(at: contextMenuCharIndex)
+        else { return }
+
+        let line = entry.sourceLineRange.lowerBound + 1
+        launchMacVim(at: line, fileURL: fileURL)
+    }
+
     // MARK: - Smart Copy (Cmd+C)
 
     override func copy(_ sender: Any?) {
@@ -796,10 +1093,13 @@ struct MarkdownTextView: NSViewRepresentable {
     // MARK: - Scroll to Heading
 
     /// Scrolls the text view to show the heading with the given anchor ID.
+    /// Positions the heading near the top of the visible area with padding,
+    /// uses smooth animation, and briefly flash-selects the heading for visibility.
     private func scrollToHeading(_ anchorID: String, in textView: MarkdownNSTextView) {
         guard let textStorage = textView.textStorage,
               let layoutManager = textView.layoutManager,
-              let textContainer = textView.textContainer
+              let textContainer = textView.textContainer,
+              let scrollView = textView.enclosingScrollView
         else { return }
 
         let fullRange = NSRange(location: 0, length: textStorage.length)
@@ -829,7 +1129,40 @@ struct MarkdownTextView: NSViewRepresentable {
         rect.origin.x += textView.textContainerOrigin.x
         rect.origin.y += textView.textContainerOrigin.y
 
-        textView.scrollToVisible(rect)
+        // Calculate scroll target so the heading appears near the top of
+        // the visible area with some padding (24pt from top).
+        let topPadding: CGFloat = 24.0
+        let clipView = scrollView.contentView
+        let visibleHeight = clipView.bounds.height
+        let contentHeight = textView.frame.height
+
+        var targetY = rect.origin.y - topPadding
+        // Clamp to valid scroll range.
+        targetY = max(0, min(targetY, contentHeight - visibleHeight))
+
+        let targetOrigin = NSPoint(x: clipView.bounds.origin.x, y: targetY)
+
+        // Smooth animated scroll.
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            clipView.animator().setBoundsOrigin(targetOrigin)
+        } completionHandler: {
+            MainActor.assumeIsolated {
+                scrollView.reflectScrolledClipView(clipView)
+
+                // Flash-select the heading text so the user sees where they landed.
+                textView.setSelectedRange(range)
+                textView.showFindIndicator(for: range)
+
+                // Clear the selection after a brief delay.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    MainActor.assumeIsolated {
+                        textView.setSelectedRange(NSRange(location: 0, length: 0))
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Coordinator
