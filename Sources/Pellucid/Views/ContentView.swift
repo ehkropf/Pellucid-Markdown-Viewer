@@ -111,7 +111,7 @@ struct ContentView: View {
                 } else {
                     ScrollViewReader { proxy in
                         ScrollView {
-                            MarkdownUI.Markdown(document.processedMarkdown, imageBaseURL: document.fileURL?.deletingLastPathComponent())
+                            MarkdownUI.Markdown(document.processedMarkdown, baseURL: document.fileURL?.deletingLastPathComponent(), imageBaseURL: document.fileURL?.deletingLastPathComponent())
                                 .markdownCodeSyntaxHighlighter(AppCodeSyntaxHighlighter(palette: themeManager.selectedTheme.syntaxColors(isDark: isDark)))
                                 .markdownBlockStyle(\.codeBlock) { configuration in
                                     codeBlockView(configuration: configuration)
@@ -124,6 +124,13 @@ struct ContentView: View {
                                 .frame(maxWidth: .infinity)
                                 .textSelection(.enabled)
                         }
+                        .environment(\.openURL, OpenURLAction { url in
+                            if url.isFileURL, markdownExtensions.contains(url.pathExtension.lowercased()) {
+                                windowManager.openFile(url: url)
+                                return .handled
+                            }
+                            return .systemAction
+                        })
                         .background(themeManager.selectedTheme.windowBackground(isDark: isDark) ?? Color(.windowBackgroundColor))
                         .focusedSceneValue(\.rawMarkdown, document.rawMarkdown)
                         .onChange(of: selectedHeadingID) { _, newValue in

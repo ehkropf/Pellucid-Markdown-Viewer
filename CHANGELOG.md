@@ -3,6 +3,9 @@
 ## Unreleased
 
 - Revert Cmd+click jump-to-editor feature (broke rendering)
+- Add underline styling to links for better visual distinction
+- Fix relative links in markdown files (e.g., test.md link in README)
+- Open markdown file links within Pellucid instead of the system handler
 
 ## 1.1.0 — 2026-03-28
 

@@ -30,7 +30,11 @@ enum AppTheme: String, CaseIterable, Sendable {
 
     @MainActor func markdownTheme(isDark: Bool) -> Theme {
         switch self {
-        case .default: .gitHub
+        case .default:
+            Theme.gitHub.link {
+                ForegroundColor(Color(nsColor: .linkColor))
+                UnderlineStyle(.single)
+            }
         case .solarized: isDark ? makeSolarizedDarkTheme() : makeSolarizedLightTheme()
         }
     }

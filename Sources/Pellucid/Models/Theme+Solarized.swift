@@ -35,6 +35,7 @@ func makeSolarizedLightTheme() -> Theme {
         }
         .link {
             ForegroundColor(Solarized.blue)
+            UnderlineStyle(.single)
         }
         .heading1 { configuration in
             VStack(alignment: .leading, spacing: 0) {
@@ -189,6 +190,7 @@ func makeSolarizedDarkTheme() -> Theme {
         }
         .link {
             ForegroundColor(Solarized.blue)
+            UnderlineStyle(.single)
         }
         .heading1 { configuration in
             VStack(alignment: .leading, spacing: 0) {
