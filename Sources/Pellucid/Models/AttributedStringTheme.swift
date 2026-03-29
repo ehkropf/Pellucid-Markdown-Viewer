@@ -159,10 +159,14 @@ struct AttributedStringTheme: Sendable {
     }
 
     /// Code block paragraph style: line spacing ~0.225em, no extra paragraph spacing.
+    /// Includes head indent to keep text inside the code block background padding.
     var codeBlockParagraphStyle: NSMutableParagraphStyle {
         let style = NSMutableParagraphStyle()
         let codeFontSize = Self.bodyFontSize * Self.codeFontSizeMultiplier
         style.lineSpacing = codeFontSize * 0.225  // ~3pt
+        style.firstLineHeadIndent = codeBlockPadding
+        style.headIndent = codeBlockPadding
+        style.tailIndent = -codeBlockPadding
         return style
     }
 

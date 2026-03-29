@@ -40,16 +40,8 @@ struct AppCommands: Commands {
             .disabled(rawMarkdown?.isEmpty ?? true)
         }
 
-        // Workaround: .textSelection(.enabled) was removed because it forces an I-beam
-        // cursor app-wide. Cmd+A copies all markdown as a substitute until NSTextView-based
-        // rendering replaces MarkdownUI and proper text selection can be restored.
-        CommandGroup(replacing: .textEditing) {
-            Button("Copy All") {
-                copyToClipboard(rawMarkdown ?? "")
-            }
-            .keyboardShortcut("a", modifiers: .command)
-            .disabled(rawMarkdown?.isEmpty ?? true)
-        }
+        // NSTextView-based rendering supports native text selection and Cmd+A (Select All)
+        // natively, so no command override is needed for .textEditing.
 
         CommandGroup(after: .sidebar) {
             Divider()

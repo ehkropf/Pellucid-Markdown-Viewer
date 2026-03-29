@@ -1082,7 +1082,7 @@ struct MarkdownTextView: NSViewRepresentable {
         coordinator.sourceMap = renderResult.sourceMap
     }
 
-    /// Applies theme colors to the text view (background, insertion point color).
+    /// Applies theme colors to the text view (background, link styling, insertion point color).
     private func applyTheme(to textView: MarkdownNSTextView, theme: AttributedStringTheme) {
         textView.decorationTheme = theme
 
@@ -1093,6 +1093,14 @@ struct MarkdownTextView: NSViewRepresentable {
             textView.drawsBackground = true
             textView.backgroundColor = .textBackgroundColor
         }
+
+        // Override NSTextView's default link styling to use the theme's link color.
+        // Without this, NSTextView forces its own blue on all .link attributes.
+        textView.linkTextAttributes = [
+            .foregroundColor: theme.linkColor,
+            .underlineStyle: NSUnderlineStyle.single.rawValue,
+            .cursor: NSCursor.pointingHand,
+        ]
 
         // Force a redraw to pick up new decoration colors.
         textView.needsDisplay = true

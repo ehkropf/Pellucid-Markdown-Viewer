@@ -381,12 +381,18 @@ struct MarkdownRenderer: MarkupVisitor {
     }
 
     mutating func visitThematicBreak(_ thematicBreak: ThematicBreak) -> NSMutableAttributedString {
+        // Use invisible placeholder text — the actual line is drawn by
+        // MarkdownNSTextView.drawThematicBreaks(). The text reserves vertical
+        // space so the layout manager knows where to position the drawn rule.
         let separator = String(repeating: "\u{2500}", count: 40)  // "─" box drawing
+        let thematicBreakStyle = NSMutableParagraphStyle()
+        thematicBreakStyle.paragraphSpacingBefore = theme.thematicBreakMargin
+        thematicBreakStyle.paragraphSpacing = theme.thematicBreakMargin
         let attrs: [NSAttributedString.Key: Any] = [
             .font: theme.bodyFont,
-            .foregroundColor: theme.thematicBreakColor,
+            .foregroundColor: NSColor.clear,
             .thematicBreak: true,
-            .paragraphStyle: theme.bodyParagraphStyle,
+            .paragraphStyle: thematicBreakStyle,
         ]
         return NSMutableAttributedString(string: separator, attributes: attrs)
     }
