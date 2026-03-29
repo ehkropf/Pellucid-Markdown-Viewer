@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.3 — 2026-03-29
+
+- Fix PlantUML cache eviction dropping all entries at 51 (now FIFO, evicts oldest 10)
+- Fix PlantUML diagrams not re-rendering on source change
+- Fix "Select All" menu item mislabeled (renamed to "Copy All")
+- Add logging for silent failures: clipboard, FileWatcher, FileIdentity, PlantUML path lookup
+- Consolidate WindowManager registration into single `attachDocument()` method
+- Deduplicate Solarized theme builders into single parameterized function
+- Make MarkdownDocument.errorMessage private(set) with setError() API
+- Add SyntaxHighlighter and AppTheme test suites (86 tests total, up from 54)
+
 ## 1.1.2 — 2026-03-29
 
 - Fix live reload missing rapid successive file changes (trailing-edge debounce replaces leading-edge coalesce)
