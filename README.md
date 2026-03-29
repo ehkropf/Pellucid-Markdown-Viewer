@@ -10,6 +10,7 @@ A native macOS markdown viewer built with Swift and SwiftUI. No web views, no Ja
 
 - **GitHub Flavored Markdown** — full GFM spec: tables, task lists, strikethrough, fenced code blocks
 - **Table of contents** — auto-generated sidebar from headings, click to scroll
+- **Themes** — Default and Solarized, with automatic light/dark mode
 - **Live reload** — watches the file for changes and re-renders instantly, keeping your scroll position
 - **Syntax highlighting** — 19 languages with regex-based tokenization
 - **LaTeX math** — native rendering via SwiftMath (no MathJax/KaTeX)
