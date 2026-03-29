@@ -3,7 +3,7 @@
 PortSystem          1.0
 PortGroup           github 1.0
 
-github.setup        ehkropf Pellucid-Markdown-Viewer 1.1.0 v
+github.setup        ehkropf Pellucid-Markdown-Viewer 1.1.1 v
 github.tarball_from archive
 name                pellucid
 revision            0
@@ -18,9 +18,9 @@ long_description    Pellucid is a native macOS markdown viewer built with \
 
 platforms           {darwin >= 23}
 
-checksums           rmd160  94281af45ea339c4bf0a1a1409340f588df77f10 \
-                    sha256  48c8f3495026dc29412b1acf67d165b383f7d86d64f6940db2c1251037497c0e \
-                    size    3208324
+checksums           rmd160  c0e6ed51ea3842685593a23f6c3d46157ecfe8ec \
+                    sha256  b7a3854603a655eec33cb70ed7793c5c8d65f300f60be8faf6250a113ba105aa \
+                    size    3962015
 
 # Swift toolchain — requires Xcode or Command Line Tools
 # No MacPorts swift dependency needed; SPM uses system toolchain
