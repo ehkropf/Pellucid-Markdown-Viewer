@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.1 — 2026-03-29
 
 - Add underline styling to links for better visual affordance
 - Use pointer cursor instead of I-beam in rendered content
