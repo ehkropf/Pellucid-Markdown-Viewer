@@ -163,11 +163,12 @@ final class SyntaxHighlighterTests: XCTestCase {
     // MARK: - Case insensitivity
 
     func testLanguageCaseInsensitive() {
-        // highlightCode lowercases the language, so "SWIFT" should match "swift"
-        let highlighter = AppCodeSyntaxHighlighter(palette: .default)
-        // Should not crash; coverage validates case handling
-        _ = highlighter.highlightCode("let x = 1", language: "SWIFT")
-        _ = highlighter.highlightCode("let x = 1", language: "Swift")
+        // Grammar lookup is case-sensitive on the key, but callers (MarkdownRenderer)
+        // lowercase the language before lookup. Verify the grammars dict has lowercase keys.
+        let code = "let x = 1"
+        XCTAssertFalse(tokens(code, language: "swift").isEmpty)
+        // Uppercase should not match (our helper lowercases, matching real usage)
+        XCTAssertFalse(tokens(code, language: "SWIFT").isEmpty)
     }
 
     // MARK: - All supported languages

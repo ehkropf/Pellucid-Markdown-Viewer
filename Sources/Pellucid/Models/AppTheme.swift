@@ -15,7 +15,6 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import SwiftUI
-@preconcurrency import MarkdownUI
 
 enum AppTheme: String, CaseIterable, Sendable {
     case `default` = "default"
@@ -28,42 +27,10 @@ enum AppTheme: String, CaseIterable, Sendable {
         }
     }
 
-    @MainActor func markdownTheme(isDark: Bool) -> Theme {
-        switch self {
-        case .default:
-            Theme.gitHub.link {
-                ForegroundColor(Color(nsColor: .linkColor))
-                UnderlineStyle(.single)
-            }
-        case .solarized: makeSolarizedTheme(isDark: isDark)
-        }
-    }
-
     func syntaxColors(isDark: Bool) -> SyntaxColorPalette {
         switch self {
         case .default: .default
         case .solarized: isDark ? .solarizedDark : .solarizedLight
-        }
-    }
-
-    func codeBlockBackground(isDark: Bool) -> Color {
-        switch self {
-        case .default: Color(.textBackgroundColor).opacity(0.5)
-        case .solarized: isDark ? Solarized.base02 : Solarized.base2
-        }
-    }
-
-    func windowBackground(isDark: Bool) -> Color? {
-        switch self {
-        case .default: nil
-        case .solarized: isDark ? Solarized.base03 : Solarized.base3
-        }
-    }
-
-    func mathTextColor(isDark: Bool) -> NSColor {
-        switch self {
-        case .default: .textColor
-        case .solarized: isDark ? NSColor(Solarized.base0) : NSColor(Solarized.base00)
         }
     }
 }

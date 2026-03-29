@@ -616,8 +616,9 @@ final class MarkdownRendererTests: XCTestCase {
         let isThematicBreak = attrs[.thematicBreak] as? Bool
         XCTAssertEqual(isThematicBreak, true)
 
+        // Text color is clear — the actual rule line is drawn by MarkdownNSTextView.
         let color = attrs[.foregroundColor] as? NSColor
-        XCTAssertEqual(color, theme.thematicBreakColor)
+        XCTAssertEqual(color, NSColor.clear)
     }
 
     func testThematicBreakSourceMap() {

@@ -41,7 +41,7 @@ let blockAttachmentDefaultMaxWidth: CGFloat = 860.0
 // MARK: - ImageAttachment
 
 /// NSTextAttachment that wraps a locally-loaded NSImage from a file URL.
-/// Scales down to fit maxWidth (never upscales), matching LocalImageProvider behavior.
+/// Scales down to fit maxWidth (never upscales).
 final class ImageAttachment: NSTextAttachment, MarkdownAttachment {
 
     private static let logger = Logger(
