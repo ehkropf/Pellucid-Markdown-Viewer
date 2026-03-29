@@ -16,6 +16,7 @@
 
 import AppKit
 import CryptoKit
+import os.log
 
 enum PlantUMLError: LocalizedError {
     case notInstalled
@@ -38,15 +39,10 @@ enum PlantUMLError: LocalizedError {
 /// Caches results by content hash to avoid redundant renders on file reload.
 actor PlantUMLRenderer {
     static let shared = PlantUMLRenderer()
+    private static let logger = Logger(subsystem: "Pellucid", category: "PlantUMLRenderer")
 
-    private var cache: [String: NSImage] = [:] {
-        didSet {
-            // Cap cache at 50 entries to prevent unbounded memory growth
-            if cache.count > 50 {
-                cache.removeAll()
-            }
-        }
-    }
+    private var cache: [String: NSImage] = [:]
+    private var cacheOrder: [String] = []
     private var plantumlPath: String?
     private var checked = false
 
@@ -72,12 +68,22 @@ actor PlantUMLRenderer {
 
         let image = try await runPlantUML(source: source, executablePath: path)
         cache[key] = image
+        cacheOrder.append(key)
+        // FIFO eviction: remove oldest 10 entries when cache exceeds 50
+        if cache.count > 50 {
+            let evictCount = min(10, cacheOrder.count)
+            for k in cacheOrder.prefix(evictCount) {
+                cache.removeValue(forKey: k)
+            }
+            cacheOrder.removeFirst(evictCount)
+        }
         return image
     }
 
     /// Clear the render cache.
     func clearCache() {
         cache.removeAll()
+        cacheOrder.removeAll()
     }
 
     // MARK: - Private
@@ -112,7 +118,7 @@ actor PlantUMLRenderer {
                 return result
             }
         } catch {
-            // `which` not found or process launch failure — not actionable, fall through
+            Self.logger.debug("PlantUML path lookup via 'which' failed: \(error.localizedDescription)")
         }
 
         return nil

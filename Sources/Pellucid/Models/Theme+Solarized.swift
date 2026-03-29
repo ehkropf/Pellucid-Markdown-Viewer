@@ -17,173 +17,26 @@
 import SwiftUI
 @preconcurrency import MarkdownUI
 
+/// Builds a Solarized MarkdownUI theme for light or dark mode.
+/// The two modes share identical layout; only four base tone colors differ.
 @MainActor
-func makeSolarizedLightTheme() -> Theme {
-    Theme()
-        .text {
-            ForegroundColor(Solarized.base00)
-            BackgroundColor(Solarized.base3)
-            FontSize(16)
-        }
-        .code {
-            FontFamilyVariant(.monospaced)
-            FontSize(.em(0.85))
-            BackgroundColor(Solarized.base2)
-        }
-        .strong {
-            FontWeight(.semibold)
-        }
-        .link {
-            ForegroundColor(Solarized.blue)
-            UnderlineStyle(.single)
-        }
-        .heading1 { configuration in
-            VStack(alignment: .leading, spacing: 0) {
-                configuration.label
-                    .relativePadding(.bottom, length: .em(0.3))
-                    .relativeLineSpacing(.em(0.125))
-                    .markdownMargin(top: 24, bottom: 16)
-                    .markdownTextStyle {
-                        FontWeight(.semibold)
-                        FontSize(.em(2))
-                    }
-                Divider().overlay(Solarized.base1)
-            }
-        }
-        .heading2 { configuration in
-            VStack(alignment: .leading, spacing: 0) {
-                configuration.label
-                    .relativePadding(.bottom, length: .em(0.3))
-                    .relativeLineSpacing(.em(0.125))
-                    .markdownMargin(top: 24, bottom: 16)
-                    .markdownTextStyle {
-                        FontWeight(.semibold)
-                        FontSize(.em(1.5))
-                    }
-                Divider().overlay(Solarized.base1)
-            }
-        }
-        .heading3 { configuration in
-            configuration.label
-                .relativeLineSpacing(.em(0.125))
-                .markdownMargin(top: 24, bottom: 16)
-                .markdownTextStyle {
-                    FontWeight(.semibold)
-                    FontSize(.em(1.25))
-                }
-        }
-        .heading4 { configuration in
-            configuration.label
-                .relativeLineSpacing(.em(0.125))
-                .markdownMargin(top: 24, bottom: 16)
-                .markdownTextStyle {
-                    FontWeight(.semibold)
-                }
-        }
-        .heading5 { configuration in
-            configuration.label
-                .relativeLineSpacing(.em(0.125))
-                .markdownMargin(top: 24, bottom: 16)
-                .markdownTextStyle {
-                    FontWeight(.semibold)
-                    FontSize(.em(0.875))
-                }
-        }
-        .heading6 { configuration in
-            configuration.label
-                .relativeLineSpacing(.em(0.125))
-                .markdownMargin(top: 24, bottom: 16)
-                .markdownTextStyle {
-                    FontWeight(.semibold)
-                    FontSize(.em(0.85))
-                    ForegroundColor(Solarized.base1)
-                }
-        }
-        .paragraph { configuration in
-            configuration.label
-                .fixedSize(horizontal: false, vertical: true)
-                .relativeLineSpacing(.em(0.25))
-                .markdownMargin(top: 0, bottom: 16)
-        }
-        .blockquote { configuration in
-            HStack(spacing: 0) {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(Solarized.cyan)
-                    .relativeFrame(width: .em(0.2))
-                configuration.label
-                    .markdownTextStyle { ForegroundColor(Solarized.base1) }
-                    .relativePadding(.horizontal, length: .em(1))
-            }
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .codeBlock { configuration in
-            ScrollView(.horizontal) {
-                configuration.label
-                    .fixedSize(horizontal: false, vertical: true)
-                    .relativeLineSpacing(.em(0.225))
-                    .markdownTextStyle {
-                        FontFamilyVariant(.monospaced)
-                        FontSize(.em(0.85))
-                    }
-                    .padding(16)
-            }
-            .background(Solarized.base2)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .markdownMargin(top: 0, bottom: 16)
-        }
-        .listItem { configuration in
-            configuration.label
-                .markdownMargin(top: .em(0.25))
-        }
-        .taskListMarker { configuration in
-            Image(systemName: configuration.isCompleted ? "checkmark.square.fill" : "square")
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(Solarized.base1, Solarized.base2)
-                .imageScale(.small)
-                .relativeFrame(minWidth: .em(1.5), alignment: .trailing)
-        }
-        .table { configuration in
-            configuration.label
-                .fixedSize(horizontal: false, vertical: true)
-                .markdownTableBorderStyle(.init(color: Solarized.base1))
-                .markdownTableBackgroundStyle(
-                    .alternatingRows(Solarized.base3, Solarized.base2)
-                )
-                .markdownMargin(top: 0, bottom: 16)
-        }
-        .tableCell { configuration in
-            configuration.label
-                .markdownTextStyle {
-                    if configuration.row == 0 {
-                        FontWeight(.semibold)
-                    }
-                    BackgroundColor(nil)
-                }
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.vertical, 6)
-                .padding(.horizontal, 13)
-                .relativeLineSpacing(.em(0.25))
-        }
-        .thematicBreak {
-            Divider()
-                .relativeFrame(height: .em(0.25))
-                .overlay(Solarized.base1)
-                .markdownMargin(top: 24, bottom: 24)
-        }
-}
+func makeSolarizedTheme(isDark: Bool) -> Theme {
+    // These four tones are the only values that differ between light and dark.
+    let textColor = isDark ? Solarized.base0 : Solarized.base00
+    let backgroundColor = isDark ? Solarized.base03 : Solarized.base3
+    let codeBackground = isDark ? Solarized.base02 : Solarized.base2
+    let subtleColor = isDark ? Solarized.base01 : Solarized.base1
 
-@MainActor
-func makeSolarizedDarkTheme() -> Theme {
-    Theme()
+    return Theme()
         .text {
-            ForegroundColor(Solarized.base0)
-            BackgroundColor(Solarized.base03)
+            ForegroundColor(textColor)
+            BackgroundColor(backgroundColor)
             FontSize(16)
         }
         .code {
             FontFamilyVariant(.monospaced)
             FontSize(.em(0.85))
-            BackgroundColor(Solarized.base02)
+            BackgroundColor(codeBackground)
         }
         .strong {
             FontWeight(.semibold)
@@ -202,7 +55,7 @@ func makeSolarizedDarkTheme() -> Theme {
                         FontWeight(.semibold)
                         FontSize(.em(2))
                     }
-                Divider().overlay(Solarized.base01)
+                Divider().overlay(subtleColor)
             }
         }
         .heading2 { configuration in
@@ -215,7 +68,7 @@ func makeSolarizedDarkTheme() -> Theme {
                         FontWeight(.semibold)
                         FontSize(.em(1.5))
                     }
-                Divider().overlay(Solarized.base01)
+                Divider().overlay(subtleColor)
             }
         }
         .heading3 { configuration in
@@ -251,7 +104,7 @@ func makeSolarizedDarkTheme() -> Theme {
                 .markdownTextStyle {
                     FontWeight(.semibold)
                     FontSize(.em(0.85))
-                    ForegroundColor(Solarized.base01)
+                    ForegroundColor(subtleColor)
                 }
         }
         .paragraph { configuration in
@@ -266,7 +119,7 @@ func makeSolarizedDarkTheme() -> Theme {
                     .fill(Solarized.cyan)
                     .relativeFrame(width: .em(0.2))
                 configuration.label
-                    .markdownTextStyle { ForegroundColor(Solarized.base01) }
+                    .markdownTextStyle { ForegroundColor(subtleColor) }
                     .relativePadding(.horizontal, length: .em(1))
             }
             .fixedSize(horizontal: false, vertical: true)
@@ -282,7 +135,7 @@ func makeSolarizedDarkTheme() -> Theme {
                     }
                     .padding(16)
             }
-            .background(Solarized.base02)
+            .background(codeBackground)
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .markdownMargin(top: 0, bottom: 16)
         }
@@ -293,16 +146,16 @@ func makeSolarizedDarkTheme() -> Theme {
         .taskListMarker { configuration in
             Image(systemName: configuration.isCompleted ? "checkmark.square.fill" : "square")
                 .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(Solarized.base01, Solarized.base02)
+                .foregroundStyle(subtleColor, codeBackground)
                 .imageScale(.small)
                 .relativeFrame(minWidth: .em(1.5), alignment: .trailing)
         }
         .table { configuration in
             configuration.label
                 .fixedSize(horizontal: false, vertical: true)
-                .markdownTableBorderStyle(.init(color: Solarized.base01))
+                .markdownTableBorderStyle(.init(color: subtleColor))
                 .markdownTableBackgroundStyle(
-                    .alternatingRows(Solarized.base03, Solarized.base02)
+                    .alternatingRows(backgroundColor, codeBackground)
                 )
                 .markdownMargin(top: 0, bottom: 16)
         }
@@ -322,7 +175,7 @@ func makeSolarizedDarkTheme() -> Theme {
         .thematicBreak {
             Divider()
                 .relativeFrame(height: .em(0.25))
-                .overlay(Solarized.base01)
+                .overlay(subtleColor)
                 .markdownMargin(top: 24, bottom: 24)
         }
 }

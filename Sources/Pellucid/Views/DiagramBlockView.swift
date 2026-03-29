@@ -57,7 +57,7 @@ struct DiagramBlockView: View {
             }
         }
         .padding(.vertical, 8)
-        .task {
+        .task(id: source) {
             await renderDiagram()
         }
     }

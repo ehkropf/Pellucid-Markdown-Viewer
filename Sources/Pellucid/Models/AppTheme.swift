@@ -35,7 +35,7 @@ enum AppTheme: String, CaseIterable, Sendable {
                 ForegroundColor(Color(nsColor: .linkColor))
                 UnderlineStyle(.single)
             }
-        case .solarized: isDark ? makeSolarizedDarkTheme() : makeSolarizedLightTheme()
+        case .solarized: makeSolarizedTheme(isDark: isDark)
         }
     }
 

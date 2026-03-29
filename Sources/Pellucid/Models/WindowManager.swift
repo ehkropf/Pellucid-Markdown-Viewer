@@ -51,6 +51,10 @@ final class WindowManager {
         documents.append(document)
     }
 
+    // Intentionally does NOT remove from openDocuments — SwiftUI fires spurious
+    // willCloseNotification during internal window management (the window stays visible).
+    // Removing the entry here would break file deduplication. Stale entries are cleaned
+    // lazily in openFile() when activateWindow returns false.
     func unregister(_ document: MarkdownDocument) {
         let id = ObjectIdentifier(document)
         Self.logger.debug("unregister: \(document.fileURL?.lastPathComponent ?? "empty"), openDocuments stays \(self.openDocuments.count)")
@@ -144,13 +148,29 @@ final class WindowManager {
     /// to nonexistent files).
     func reportError(_ message: String) {
         if let empty = emptyDocument() {
-            empty.errorMessage = message
+            empty.setError(message)
+        } else {
+            Self.logger.warning("No empty window for error: \(message)")
         }
     }
 
     func claimQueuedURL() -> URL? {
         guard !urlQueue.isEmpty else { return nil }
         return urlQueue.removeFirst()
+    }
+
+    /// Sets up a new document for display: captures the window action, registers
+    /// the document, loads any queued URL, and drains pending URLs.
+    /// Called from `DocumentWindowView.onAppear` to encapsulate the multi-step
+    /// registration protocol in a single atomic operation.
+    func attachDocument(_ document: MarkdownDocument, openWindow: OpenWindowAction) {
+        captureOpenWindowAction(openWindow)
+        register(document)
+        if let url = claimQueuedURL() {
+            document.loadFile(url: url)
+            updateMapping(for: document)
+        }
+        processPendingURLs()
     }
 
     /// Drains any remaining queued URLs by calling `openFile` for each.

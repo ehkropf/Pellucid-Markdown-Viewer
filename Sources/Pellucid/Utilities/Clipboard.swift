@@ -16,6 +16,7 @@
 
 import AppKit
 import Foundation
+import os.log
 
 extension Notification.Name {
     static let didCopyToClipboard = Notification.Name("didCopyToClipboard")
@@ -27,6 +28,9 @@ func copyToClipboard(_ text: String) {
     guard !text.isEmpty else { return }
     let pasteboard = NSPasteboard.general
     pasteboard.clearContents()
-    guard pasteboard.setString(text, forType: .string) else { return }
+    guard pasteboard.setString(text, forType: .string) else {
+        Logger(subsystem: "Pellucid", category: "Clipboard").warning("Failed to write to pasteboard")
+        return
+    }
     NotificationCenter.default.post(name: .didCopyToClipboard, object: nil)
 }

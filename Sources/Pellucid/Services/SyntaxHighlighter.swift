@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import SwiftUI
 import MarkdownUI
+import os.log
+import SwiftUI
 
 /// Regex-based syntax highlighter that covers common token types.
 /// Produces styled SwiftUI Text for use with MarkdownUI's CodeSyntaxHighlighter protocol.
@@ -77,25 +78,26 @@ struct AppCodeSyntaxHighlighter: CodeSyntaxHighlighter {
 
 // MARK: - Token types
 
-private enum TokenKind {
+enum TokenKind {
     case keyword, string, comment, number, type, function, operator_, attribute, constant
 }
 
-private struct Token {
+struct Token {
     let range: NSRange
     let kind: TokenKind
 }
 
 // MARK: - Tokenizer
 
-private func tokenize(code: String, grammar: Grammar) -> [Token] {
+func tokenize(code: String, grammar: Grammar) -> [Token] {
     var tokens: [Token] = []
     var occupied = IndexSet()
 
     // Process patterns in priority order (comments/strings first to avoid conflicts)
     for (pattern, kind) in grammar.patterns {
         guard let regex = try? NSRegularExpression(pattern: pattern, options: grammar.options) else {
-            assertionFailure("[SyntaxHighlighter] Invalid regex pattern: \(pattern)")
+            Logger(subsystem: "Pellucid", category: "SyntaxHighlighter")
+                .error("Invalid regex pattern: \(pattern)")
             continue
         }
         let nsRange = NSRange(code.startIndex..., in: code)
@@ -117,13 +119,14 @@ private func tokenize(code: String, grammar: Grammar) -> [Token] {
 // MARK: - Language grammars
 
 /// Patterns are matched in declaration order; earlier patterns take priority
-/// when ranges overlap (e.g., comments and strings should come first).
-private struct Grammar {
+/// when ranges overlap. The `tokenize()` function uses range occupancy tracking
+/// (via `IndexSet`) to skip matches that overlap with already-claimed ranges.
+struct Grammar {
     let patterns: [(String, TokenKind)]
     var options: NSRegularExpression.Options = []
 }
 
-private let grammars: [String: Grammar] = [
+let grammars: [String: Grammar] = [
     "swift": Grammar(patterns: [
         (#"//[^\n]*"#, .comment),
         (#"/\*[\s\S]*?\*/"#, .comment),

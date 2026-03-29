@@ -281,6 +281,42 @@ final class TOCExtractorTests: XCTestCase {
         XCTAssertEqual(section, "## One")
     }
 
+    func testExtractSectionWithDuplicateHeadings() {
+        let markdown = """
+        # Title
+
+        ## Examples
+
+        First examples.
+
+        ## Other
+
+        Other content.
+
+        ## Examples
+
+        Second examples.
+        """
+        let entries = extractTOC(markdown)
+        let flat = TOCExtractor.flatten(entries)
+        let firstExamples = flat.first(where: { $0.title == "Examples" })!
+        let lastExamples = flat.last(where: { $0.title == "Examples" })!
+        XCTAssertNotEqual(firstExamples.lineOffset, lastExamples.lineOffset)
+
+        let first = TOCExtractor.extractSection(for: firstExamples, allEntries: entries, rawMarkdown: markdown)
+        let second = TOCExtractor.extractSection(for: lastExamples, allEntries: entries, rawMarkdown: markdown)
+        XCTAssertTrue(first.contains("First examples."))
+        XCTAssertFalse(first.contains("Second examples."))
+        XCTAssertTrue(second.contains("Second examples."))
+        XCTAssertFalse(second.contains("First examples."))
+    }
+
+    func testHeadingWithNestedBoldAndCode() {
+        let toc = extractTOC("## **The `map` function**")
+        XCTAssertEqual(toc[0].title, "The map function")
+        XCTAssertEqual(toc[0].id, slugify("The map function"))
+    }
+
     // MARK: - ID alignment with slugify
 
     func testIDMatchesSlugify() {

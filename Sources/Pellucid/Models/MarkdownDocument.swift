@@ -15,8 +15,9 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import SwiftUI
 import Markdown
+import os.log
+import SwiftUI
 
 /// Per-file document model. Owns the file URL, raw/processed markdown, TOC, and file watcher.
 /// `processedMarkdown` is `rawMarkdown` with `$$` blocks converted to fenced math blocks.
@@ -26,10 +27,20 @@ final class MarkdownDocument: ObservableObject {
     @Published private(set) var rawMarkdown: String = ""
     @Published private(set) var fileName: String = "No File"
     @Published private(set) var tocEntries: [TOCEntry] = []
-    @Published var errorMessage: String?
+    @Published private(set) var errorMessage: String?
     @Published private(set) var processedMarkdown: String = ""
 
+    private static let logger = Logger(subsystem: "Pellucid", category: "MarkdownDocument")
     private let fileWatcher = FileWatcher()
+
+    /// Sets an error message and clears all content state.
+    /// Used by WindowManager.reportError for CLI arg errors.
+    func setError(_ message: String) {
+        errorMessage = message
+        rawMarkdown = ""
+        processedMarkdown = ""
+        tocEntries = []
+    }
 
     func loadFile(url: URL) {
         fileURL = url
@@ -61,6 +72,7 @@ final class MarkdownDocument: ObservableObject {
             let document = Document(parsing: content)
             tocEntries = TOCExtractor.extractTOC(from: document)
         } catch {
+            Self.logger.error("Failed to read \(url.path): \(error.localizedDescription)")
             errorMessage = "Error reading file: \(error.localizedDescription)"
             rawMarkdown = ""
             processedMarkdown = ""

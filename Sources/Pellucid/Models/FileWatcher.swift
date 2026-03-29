@@ -15,11 +15,13 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
+import os.log
 
 /// Watches a file for changes using DispatchSource.
 /// Handles write, rename, and delete events with debouncing.
 @MainActor
 final class FileWatcher {
+    private static let logger = Logger(subsystem: "Pellucid", category: "FileWatcher")
     private var source: DispatchSourceFileSystemObject?
     private var fileDescriptor: Int32 = -1
     private var coalesceTimer: DispatchWorkItem?
@@ -142,7 +144,12 @@ final class FileWatcher {
     }
 
     private func modificationDate(of url: URL) -> Date? {
-        try? FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as? Date
+        do {
+            return try FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as? Date
+        } catch {
+            Self.logger.debug("Failed to read modification date for \(url.path): \(error.localizedDescription)")
+            return nil
+        }
     }
 
     /// After a delete/rename, close the old descriptor and attempt to re-open.
@@ -161,6 +168,7 @@ final class FileWatcher {
 
     private func tryReopen(url: URL, attempt: Int) {
         let maxAttempts = 5
+        guard watchedURL != nil else { return }
         if FileManager.default.fileExists(atPath: url.path) {
             startWatching(url: url)
             debounceNotify()

@@ -15,15 +15,22 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
+import os.log
 
 struct FileIdentity: Hashable, Sendable {
     let device: dev_t
     let inode: ino_t
 
+    private static let logger = Logger(subsystem: "Pellucid", category: "FileIdentity")
+
     init?(url: URL) {
         let path = url.standardized.path
         var statBuf = stat()
-        guard stat(path, &statBuf) == 0 else { return nil }
+        guard stat(path, &statBuf) == 0 else {
+            let err = String(cString: strerror(errno))
+            Self.logger.debug("stat failed for \(path): \(err)")
+            return nil
+        }
         self.device = statBuf.st_dev
         self.inode = statBuf.st_ino
     }

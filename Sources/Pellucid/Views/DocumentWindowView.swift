@@ -33,13 +33,7 @@ struct DocumentWindowView: View {
                 }
             }
             .onAppear {
-                windowManager.captureOpenWindowAction(openWindow)
-                windowManager.register(document)
-                if let url = windowManager.claimQueuedURL() {
-                    document.loadFile(url: url)
-                    windowManager.updateMapping(for: document)
-                }
-                windowManager.processPendingURLs()
+                windowManager.attachDocument(document, openWindow: openWindow)
             }
     }
 }

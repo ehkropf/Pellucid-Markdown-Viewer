@@ -147,6 +147,18 @@ final class MathPreprocessorTests: XCTestCase {
         XCTAssertEqual(preprocessBlockMath(input), input)
     }
 
+    func testTildeBlockInsideBacktickBlock() {
+        // A ~~~ inside ``` should not close the backtick block
+        let input = "```\n~~~\n$$\nstuff\n$$\n~~~\n```"
+        XCTAssertEqual(preprocessBlockMath(input), input)
+    }
+
+    func testFiveBacktickFence() {
+        // A fence with 5 backticks requires 5+ to close
+        let input = "`````\n$$\nstuff\n$$\n`````"
+        XCTAssertEqual(preprocessBlockMath(input), input)
+    }
+
     func testEmptyInput() {
         XCTAssertEqual(preprocessBlockMath(""), "")
     }
