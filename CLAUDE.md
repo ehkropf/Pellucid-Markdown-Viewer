@@ -49,9 +49,9 @@ Makefile         — build, test, clean, portindex, checksums targets
 
 - **Multi-window**: `WindowGroup(id: "viewer")` — each file opens in its own window
 - `WindowManager` (`@MainActor @Observable` singleton) tracks open documents, deduplicates by `FileIdentity` (device+inode via `stat()`), reuses empty windows, brings existing windows to front
-- `DocumentWindowView` wraps `ContentView` per window — creates `@StateObject` `MarkdownDocument`, registers with `WindowManager`, captures `NSWindow` via `WindowAccessor`
+- `DocumentWindowView` wraps `ContentView` per window — creates `@StateObject` `MarkdownDocument`, calls `WindowManager.attachDocument()` on appear, captures `NSWindow` via `WindowAccessor`
 - All file-open paths (File > Open, drag-drop, CLI args, Finder) converge through `WindowManager.openFile(url:)`
-- `MarkdownDocument` is a clean `@MainActor ObservableObject` — owns file URL, raw text, TOC, FileWatcher
+- `MarkdownDocument` is a clean `@MainActor ObservableObject` — owns file URL, raw text, TOC, FileWatcher; `errorMessage` is `private(set)` with `setError()` for external callers
 - MarkdownUI renders GFM with theme from `ThemeManager` (`.markdownTheme(themeManager.selectedTheme.markdownTheme(isDark:))`)
 - Code blocks dispatch via `.markdownBlockStyle(\.codeBlock)`: `math`/`latex` → MathBlockView, `plantuml` → DiagramBlockView, else → syntax-highlighted
 - TOC extracted from swift-markdown AST via `MarkupWalker`, displayed in `NavigationSplitView` sidebar
@@ -96,7 +96,7 @@ Makefile         — build, test, clean, portindex, checksums targets
 - `LocalImageProvider` uses `maxWidth`/`maxHeight` (not fixed `width`/`height`) — images scale down to fit content area but never upscale
 - `DiagramBlockView` adds white background behind PlantUML diagrams in dark mode — no re-rendering needed, pure view styling
 - `@Environment(\.colorScheme)` does NOT propagate into MarkdownUI block style closures — pass values explicitly or use environment in standalone views like `DiagramBlockView`
-- `.textSelection(.enabled)` removed — forced I-beam cursor; Cmd+A and "Copy Section" are workarounds until NSTextView-based rendering replaces MarkdownUI
+- `.textSelection(.enabled)` removed — forced I-beam cursor; Cmd+A ("Copy All") and "Copy Section" are workarounds until NSTextView-based rendering replaces MarkdownUI
 - `Markdown` view uses `imageBaseURL` (not `baseURL`) — `baseURL` would make relative links resolve to `file://` URLs, which bypass the `openURL` environment on macOS; without `baseURL`, relative links stay scheme-less and route through the `openURL` handler on the Markdown view
 - MarkdownUI `file://` link clicks on macOS bypass SwiftUI's `openURL` environment — they go through `NSWorkspace` directly; use scheme-less URLs + `openURL` handler instead
 - MacPorts Portfile requires `--disable-sandbox` (SPM sandbox conflicts with MacPorts sandbox) and `--cache-path` (build user can't write to default SPM cache)
@@ -105,7 +105,7 @@ Makefile         — build, test, clean, portindex, checksums targets
 
 - No TDD — unit tests for logic only
 - Visual acceptance testing via `test.md` (covers GFM, code blocks, math, PlantUML)
-- Tests across 4 files: SlugifyTests, TOCExtractorTests, FileIdentityTests, MathPreprocessorTests
+- Tests across 6 files: SlugifyTests, TOCExtractorTests, FileIdentityTests, MathPreprocessorTests, SyntaxHighlighterTests, AppThemeTests
 - All tests use XCTest for framework consistency
 
 ## Code Style
