@@ -37,6 +37,20 @@ final class MarkdownNSTextView: NSTextView {
     /// The theme controlling decoration colors and dimensions.
     var decorationTheme: AttributedStringTheme?
 
+    /// Back-reference to the coordinator for SourceMap and rawMarkdown access.
+    weak var coordinator: MarkdownTextView.Coordinator?
+
+    // MARK: - Hover Copy Button State
+
+    /// The floating copy button shown when hovering over a code block.
+    private var copyButton: NSButton?
+
+    /// The character range of the code block currently being hovered.
+    private var hoveredCodeBlockRange: NSRange?
+
+    /// Observer for scroll view bounds changes (hides copy button on scroll).
+    nonisolated(unsafe) private var scrollObserver: NSObjectProtocol?
+
     // MARK: - Background Drawing
 
     override func drawBackground(in rect: NSRect) {
@@ -320,6 +334,303 @@ final class MarkdownNSTextView: NSTextView {
         // The default behavior for non-editable text views is arrow cursor,
         // which is what we want. No additional cursor rects needed.
     }
+
+    // MARK: - Smart Copy (Cmd+C)
+
+    override func copy(_ sender: Any?) {
+        let selectedRange = self.selectedRange()
+        guard selectedRange.length > 0, let textStorage else {
+            super.copy(sender)
+            return
+        }
+
+        if isSelectionEntirelyInCodeBlock(selectedRange, textStorage: textStorage) {
+            copyVerbatimText(in: selectedRange, textStorage: textStorage)
+        } else {
+            copyAsMarkdownSource(in: selectedRange)
+        }
+    }
+
+    /// Checks whether the entire selection falls within a single contiguous
+    /// code block (identified by the `.codeBlockRange` attribute).
+    private func isSelectionEntirelyInCodeBlock(
+        _ range: NSRange,
+        textStorage: NSTextStorage
+    ) -> Bool {
+        var entirelyCovered = true
+        textStorage.enumerateAttribute(
+            .codeBlockRange,
+            in: range,
+            options: []
+        ) { value, _, stop in
+            if value == nil {
+                entirelyCovered = false
+                stop.pointee = true
+            }
+        }
+        return entirelyCovered
+    }
+
+    /// Copies the plain text of the selection directly (no markdown fences).
+    private func copyVerbatimText(
+        in range: NSRange,
+        textStorage: NSTextStorage
+    ) {
+        let text = textStorage.attributedSubstring(from: range).string
+        copyToClipboard(text)
+        Self.logger.debug("Copied verbatim code text (\(range.length) chars)")
+    }
+
+    /// Uses the coordinator's SourceMap to find which source lines the
+    /// selection covers and copies the raw markdown for those lines.
+    private func copyAsMarkdownSource(in range: NSRange) {
+        guard let coordinator,
+              let sourceLineRange = coordinator.sourceMap.sourceLines(for: range)
+        else {
+            // SourceMap lookup failed — fall through to default behavior.
+            super.copy(nil)
+            return
+        }
+
+        let lines = coordinator.rawMarkdown.components(separatedBy: "\n")
+        let clampedLower = max(sourceLineRange.lowerBound, 0)
+        let clampedUpper = min(sourceLineRange.upperBound, lines.count)
+        guard clampedLower < clampedUpper else {
+            super.copy(nil)
+            return
+        }
+
+        let selectedLines = lines[clampedLower..<clampedUpper].joined(separator: "\n")
+        copyToClipboard(selectedLines)
+        Self.logger.debug(
+            "Copied markdown source lines \(clampedLower)-\(clampedUpper - 1)"
+        )
+    }
+
+    // MARK: - Hover Copy Button (Tracking)
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+
+        // Remove existing tracking areas we added.
+        for area in trackingAreas where area.owner === self {
+            removeTrackingArea(area)
+        }
+
+        let options: NSTrackingArea.Options = [
+            .mouseMoved,
+            .mouseEnteredAndExited,
+            .activeInActiveApp,
+            .inVisibleRect,
+        ]
+        let trackingArea = NSTrackingArea(
+            rect: .zero,
+            options: options,
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea)
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        updateCopyButtonForMouseLocation(event)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        hideCopyButton()
+    }
+
+    /// Hit-tests the character at the mouse point and shows/hides the copy
+    /// button depending on whether the cursor is over a code block.
+    private func updateCopyButtonForMouseLocation(_ event: NSEvent) {
+        let pointInView = convert(event.locationInWindow, from: nil)
+
+        guard let textContainer, let layoutManager, let textStorage else {
+            hideCopyButton()
+            return
+        }
+
+        // Convert point to text container coordinates.
+        var textPoint = pointInView
+        textPoint.x -= textContainerOrigin.x
+        textPoint.y -= textContainerOrigin.y
+
+        let glyphIndex = layoutManager.glyphIndex(
+            for: textPoint,
+            in: textContainer
+        )
+        let charIndex = layoutManager.characterIndexForGlyph(at: glyphIndex)
+
+        guard charIndex < textStorage.length else {
+            hideCopyButton()
+            return
+        }
+
+        // Check if this character is inside a code block.
+        var effectiveRange = NSRange(location: 0, length: 0)
+        let value = textStorage.attribute(
+            .codeBlockRange,
+            at: charIndex,
+            effectiveRange: &effectiveRange
+        )
+
+        if value != nil {
+            // Mouse is over a code block — show button if not already showing
+            // for this range.
+            if hoveredCodeBlockRange != effectiveRange {
+                showCopyButton(for: effectiveRange)
+            }
+        } else {
+            hideCopyButton()
+        }
+    }
+
+    // MARK: - Copy Button Lifecycle
+
+    /// Creates and positions the copy button in the top-right corner of the
+    /// code block's visual bounding rect.
+    private func showCopyButton(for codeBlockRange: NSRange) {
+        hideCopyButton()
+        hoveredCodeBlockRange = codeBlockRange
+
+        guard let layoutManager, let textContainer else { return }
+
+        // Calculate the visual rect of the code block.
+        let glyphRange = layoutManager.glyphRange(
+            forCharacterRange: codeBlockRange,
+            actualCharacterRange: nil
+        )
+        var blockRect = layoutManager.boundingRect(
+            forGlyphRange: glyphRange,
+            in: textContainer
+        )
+        blockRect.origin.x += textContainerOrigin.x
+        blockRect.origin.y += textContainerOrigin.y
+
+        // Expand for padding (matching drawCodeBlockBackgrounds).
+        if let theme = decorationTheme {
+            let padding = theme.codeBlockPadding
+            blockRect = blockRect.insetBy(dx: -padding, dy: -padding)
+        }
+
+        // Position button in the top-right corner of the block.
+        let buttonSize: CGFloat = 28
+        let inset: CGFloat = 6
+        let buttonOrigin = NSPoint(
+            x: blockRect.maxX - buttonSize - inset,
+            y: blockRect.origin.y + inset
+        )
+
+        let button = NSButton(frame: NSRect(
+            origin: buttonOrigin,
+            size: NSSize(width: buttonSize, height: buttonSize)
+        ))
+        button.bezelStyle = .accessoryBar
+        button.isBordered = false
+        button.image = NSImage(
+            systemSymbolName: "doc.on.doc",
+            accessibilityDescription: "Copy code block"
+        )
+        button.imageScaling = .scaleProportionallyDown
+        button.contentTintColor = .secondaryLabelColor
+        button.toolTip = "Copy code block"
+        button.target = self
+        button.action = #selector(copyCodeBlockClicked(_:))
+        button.tag = codeBlockRange.location
+
+        // Semi-transparent rounded background.
+        button.wantsLayer = true
+        button.layer?.cornerRadius = 6
+        if let theme = decorationTheme {
+            button.layer?.backgroundColor = theme.codeBlockBackground
+                .withAlphaComponent(0.85).cgColor
+        } else {
+            button.layer?.backgroundColor = NSColor.controlBackgroundColor
+                .withAlphaComponent(0.85).cgColor
+        }
+
+        // Start hidden for fade-in.
+        button.alphaValue = 0
+
+        addSubview(button)
+        copyButton = button
+
+        // Register for scroll events to hide the button on scroll.
+        if scrollObserver == nil, let scrollView = enclosingScrollView {
+            scrollObserver = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification,
+                object: scrollView.contentView,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.hideCopyButton()
+                }
+            }
+        }
+
+        // Fade in.
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.15
+            button.animator().alphaValue = 1
+        }
+    }
+
+    /// Hides and removes the copy button with a fade-out animation.
+    private func hideCopyButton() {
+        guard let button = copyButton else { return }
+        hoveredCodeBlockRange = nil
+        copyButton = nil
+
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.1
+            button.animator().alphaValue = 0
+        }, completionHandler: { [weak button] in
+            MainActor.assumeIsolated {
+                button?.removeFromSuperview()
+            }
+        })
+
+        removeScrollObserver()
+    }
+
+    /// Removes the scroll bounds-change observer if present.
+    private func removeScrollObserver() {
+        if let observer = scrollObserver {
+            NotificationCenter.default.removeObserver(observer)
+            scrollObserver = nil
+        }
+    }
+
+    /// Action for the hover copy button — copies the entire code block content.
+    @objc private func copyCodeBlockClicked(_ sender: NSButton) {
+        guard let textStorage else { return }
+        let location = sender.tag
+
+        // Find the full code block range from the stored location.
+        guard location >= 0, location < textStorage.length else { return }
+
+        var effectiveRange = NSRange(location: 0, length: 0)
+        let value = textStorage.attribute(
+            .codeBlockRange,
+            at: location,
+            effectiveRange: &effectiveRange
+        )
+        guard value != nil else { return }
+
+        let codeText = textStorage.attributedSubstring(from: effectiveRange).string
+        copyToClipboard(codeText)
+        Self.logger.debug("Copied code block via hover button (\(effectiveRange.length) chars)")
+    }
+
+    // MARK: - Cleanup
+
+    deinit {
+        if let observer = scrollObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
 }
 
 // MARK: - MarkdownTextView (NSViewRepresentable)
@@ -407,9 +718,10 @@ struct MarkdownTextView: NSViewRepresentable {
             height: CGFloat.greatestFiniteMagnitude
         )
 
-        // Store reference in coordinator.
+        // Store references in coordinator and text view.
         context.coordinator.textView = textView
         context.coordinator.scrollView = scrollView
+        textView.coordinator = context.coordinator
 
         // Set initial theme and content.
         applyTheme(to: textView, theme: theme)
