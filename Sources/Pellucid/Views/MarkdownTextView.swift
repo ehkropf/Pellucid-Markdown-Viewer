@@ -947,11 +947,14 @@ struct MarkdownTextView: NSViewRepresentable {
     /// When set, the view scrolls to the heading with this anchor ID.
     var selectedHeadingID: String?
 
-    /// The file being displayed (for Cmd+click -> editor, added in later steps).
+    /// The file being displayed (for Cmd+click -> editor).
     var fileURL: URL?
 
-    /// Source markdown text (for copy-as-markdown, added in later steps).
+    /// Source markdown text (for copy-as-markdown).
     var rawMarkdown: String = ""
+
+    /// Window manager for opening markdown links in new windows.
+    var windowManager: WindowManager?
 
     /// Maximum content width (matching current 860pt layout).
     private static let maxContentWidth: CGFloat = 860.0
@@ -1018,7 +1021,11 @@ struct MarkdownTextView: NSViewRepresentable {
         // Store references in coordinator and text view.
         context.coordinator.textView = textView
         context.coordinator.scrollView = scrollView
+        context.coordinator.windowManager = windowManager
         textView.coordinator = context.coordinator
+
+        // Set the coordinator as delegate for link click interception.
+        textView.delegate = context.coordinator
 
         // Set initial theme and content.
         applyTheme(to: textView, theme: theme)
@@ -1045,10 +1052,11 @@ struct MarkdownTextView: NSViewRepresentable {
             applyContent(to: textView, renderResult: renderResult, coordinator: context.coordinator)
         }
 
-        // Update coordinator state for later interaction features.
+        // Update coordinator state for interaction features.
         context.coordinator.sourceMap = renderResult.sourceMap
         context.coordinator.rawMarkdown = rawMarkdown
         context.coordinator.fileURL = fileURL
+        context.coordinator.windowManager = windowManager
 
         // Scroll to heading if requested.
         if let headingID = selectedHeadingID, !headingID.isEmpty {
@@ -1169,9 +1177,16 @@ struct MarkdownTextView: NSViewRepresentable {
 
     /// Coordinator that stores mutable state for the NSTextView and acts as a
     /// delegate bridge. Holds the SourceMap, rawMarkdown, and fileURL for
-    /// interaction features added in Steps 7-11.
+    /// interaction features added in Steps 7-11. Conforms to NSTextViewDelegate
+    /// for link click interception.
     @MainActor
-    final class Coordinator: NSObject {
+    final class Coordinator: NSObject, NSTextViewDelegate {
+
+        private static let logger = Logger(
+            subsystem: Bundle.main.bundleIdentifier ?? "com.pellucid",
+            category: "MarkdownTextView.Coordinator"
+        )
+
         weak var textView: MarkdownNSTextView?
         weak var scrollView: NSScrollView?
 
@@ -1188,10 +1203,54 @@ struct MarkdownTextView: NSViewRepresentable {
         /// File URL for Cmd+click -> editor.
         var fileURL: URL?
 
+        /// Reference to WindowManager for opening markdown links in new windows.
+        var windowManager: WindowManager?
+
         /// Tracks the current theme's dark mode state for change detection.
         var currentThemeIsDark: Bool?
 
         /// Tracks the current window background for change detection.
         var currentWindowBackground: NSColor?
+
+        // MARK: - NSTextViewDelegate — Link Clicks
+
+        /// Intercepts link clicks to handle relative markdown links.
+        /// Returns true if the link was handled, false to let the system handle it.
+        func textView(
+            _ textView: NSTextView,
+            clickedOnLink link: Any,
+            at charIndex: Int
+        ) -> Bool {
+            guard let url = link as? URL else { return false }
+
+            Self.logger.debug(
+                "Link clicked: scheme=\(url.scheme ?? "nil") path=\(url.path) abs=\(url.absoluteString)"
+            )
+
+            // If the URL has no scheme, resolve it relative to the file's directory.
+            if url.scheme == nil, let baseDir = fileURL?.deletingLastPathComponent() {
+                let resolved = baseDir.appendingPathComponent(url.path)
+                Self.logger.debug("Resolved relative link: \(resolved.absoluteString)")
+
+                if markdownExtensions.contains(resolved.pathExtension.lowercased()) {
+                    Self.logger.debug("Opening markdown link in new window")
+                    windowManager?.openFile(url: resolved)
+                    return true
+                }
+            }
+
+            // For file:// URLs that point to markdown files, open in Pellucid.
+            if url.scheme == "file",
+               markdownExtensions.contains(url.pathExtension.lowercased())
+            {
+                Self.logger.debug("Opening file:// markdown link in new window")
+                windowManager?.openFile(url: url)
+                return true
+            }
+
+            // Let the system handle all other links (http, https, mailto, etc.).
+            Self.logger.debug("Delegating link to system handler")
+            return false
+        }
     }
 }

@@ -15,7 +15,6 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import SwiftUI
-import MarkdownUI
 import os.log
 
 struct RawMarkdownKey: FocusedValueKey {
@@ -43,6 +42,9 @@ struct ContentView: View {
     @State private var didRestoreState = false
     @SceneStorage("columnVisibility") private var storedVisibility: String = "automatic"
 
+    /// The current render result produced by MarkdownRenderer.
+    @State private var renderResult: RenderResult?
+
     private static let logger = Logger(subsystem: "Pellucid", category: "ContentView")
     private var isDark: Bool { colorScheme == .dark }
 
@@ -65,6 +67,7 @@ struct ContentView: View {
             default: columnVisibility = .automatic
             }
             didRestoreState = true
+            updateRenderResult()
         }
         .onChange(of: columnVisibility) { _, newValue in
             guard didRestoreState else { return }
@@ -85,6 +88,17 @@ struct ContentView: View {
                 windowManager.openFile(url: url)
             }
             return true
+        }
+        // Re-render when the document's content, theme, or color scheme changes.
+        // Track processedMarkdown (String, Equatable) as a proxy for parsedDocument changes.
+        .onChange(of: document.processedMarkdown) { _, _ in
+            updateRenderResult()
+        }
+        .onChange(of: themeManager.selectedTheme) { _, _ in
+            updateRenderResult()
+        }
+        .onChange(of: colorScheme) { _, _ in
+            updateRenderResult()
         }
     }
 
@@ -110,49 +124,30 @@ struct ContentView: View {
                     errorBanner(error)
                 } else if document.rawMarkdown.isEmpty {
                     emptyState
-                } else {
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            MarkdownUI.Markdown(document.processedMarkdown, imageBaseURL: document.fileURL?.deletingLastPathComponent())
-                                .markdownCodeSyntaxHighlighter(AppCodeSyntaxHighlighter(palette: themeManager.selectedTheme.syntaxColors(isDark: isDark)))
-                                .markdownBlockStyle(\.codeBlock) { configuration in
-                                    codeBlockView(configuration: configuration)
-                                }
-                                .markdownImageProvider(.local)
-                                .markdownTheme(themeManager.selectedTheme.markdownTheme(isDark: isDark))
-                                .environment(\.openURL, OpenURLAction { url in
-                                    Self.logger.debug("openURL: scheme=\(url.scheme ?? "nil") path=\(url.path) abs=\(url.absoluteString)")
-                                    if url.scheme == nil, let baseDir = document.fileURL?.deletingLastPathComponent() {
-                                        let resolved = baseDir.appendingPathComponent(url.path)
-                                        Self.logger.debug("resolved: \(resolved.absoluteString)")
-                                        if markdownExtensions.contains(resolved.pathExtension.lowercased()) {
-                                            Self.logger.debug("calling openFile")
-                                            windowManager.openFile(url: resolved)
-                                            return .handled
-                                        }
-                                    }
-                                    Self.logger.debug("falling through to systemAction")
-                                    return .systemAction
-                                })
-                                .padding(.horizontal, 32)
-                                .padding(.vertical, 24)
-                                .frame(maxWidth: 860, alignment: .leading)
-                                .frame(maxWidth: .infinity)
-                        }
-                        .background(themeManager.selectedTheme.windowBackground(isDark: isDark) ?? Color(.windowBackgroundColor))
-                        .focusedSceneValue(\.rawMarkdown, document.rawMarkdown)
-                        .onChange(of: selectedHeadingID) { _, newValue in
-                            if let id = newValue {
-                                withAnimation {
-                                    proxy.scrollTo(id, anchor: .top)
-                                }
-                                // Clear selection after scroll animation so the same heading can be re-selected
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                    selectedHeadingID = nil
-                                }
+                } else if let result = renderResult {
+                    let theme = themeManager.selectedTheme.attributedStringTheme(isDark: isDark)
+                    MarkdownTextView(
+                        renderResult: result,
+                        theme: theme,
+                        selectedHeadingID: selectedHeadingID,
+                        fileURL: document.fileURL,
+                        rawMarkdown: document.rawMarkdown,
+                        windowManager: windowManager
+                    )
+                    .focusedSceneValue(\.rawMarkdown, document.rawMarkdown)
+                    .onChange(of: selectedHeadingID) { _, newValue in
+                        if newValue != nil {
+                            // Clear selection after scroll animation so the same
+                            // heading can be re-selected from the sidebar.
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                selectedHeadingID = nil
                             }
                         }
                     }
+                } else {
+                    // Render result not yet computed — show loading state.
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
 
@@ -209,27 +204,22 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    @ViewBuilder
-    private func codeBlockView(configuration: CodeBlockConfiguration) -> some View {
-        let lang = configuration.language?.lowercased()
-        if lang == "math" || lang == "latex" {
-            MathBlockView(latex: configuration.content.trimmingCharacters(in: .whitespacesAndNewlines), textColor: themeManager.selectedTheme.mathTextColor(isDark: isDark))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .markdownMargin(top: .em(0.8), bottom: .em(0.8))
-        } else if lang == "plantuml" {
-            DiagramBlockView(source: configuration.content)
-        } else {
-            configuration.label
-                .relativeLineSpacing(.em(0.225))
-                .markdownTextStyle {
-                    FontFamilyVariant(.monospaced)
-                    FontSize(.em(0.85))
-                }
-                .padding(16)
-                .background(themeManager.selectedTheme.codeBlockBackground(isDark: isDark))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .markdownMargin(top: .zero, bottom: .em(0.8))
+    // MARK: - Rendering
+
+    /// Renders the current parsed document with the active theme.
+    private func updateRenderResult() {
+        guard let parsedDoc = document.parsedDocument else {
+            renderResult = nil
+            return
         }
+
+        let theme = themeManager.selectedTheme.attributedStringTheme(isDark: isDark)
+        let baseURL = document.fileURL?.deletingLastPathComponent()
+
+        renderResult = MarkdownRenderer.render(
+            document: parsedDoc,
+            theme: theme,
+            baseURL: baseURL
+        )
     }
 }

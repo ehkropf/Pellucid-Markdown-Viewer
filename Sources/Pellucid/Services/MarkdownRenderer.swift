@@ -80,6 +80,9 @@ struct MarkdownRenderer: MarkupVisitor {
     private let theme: AttributedStringTheme
     private var sourceMap = SourceMap()
 
+    /// Base URL for resolving relative image paths (directory containing the markdown file).
+    private let baseURL: URL?
+
     /// Font trait stack for composing bold/italic through nested inline markup.
     private var fontTraits: NSFontDescriptor.SymbolicTraits = []
 
@@ -99,9 +102,14 @@ struct MarkdownRenderer: MarkupVisitor {
     /// - Parameters:
     ///   - document: A parsed swift-markdown `Document`.
     ///   - theme: The `AttributedStringTheme` controlling fonts and colors.
+    ///   - baseURL: Base directory URL for resolving relative image paths.
     /// - Returns: A `RenderResult` containing the attributed string and source map.
-    static func render(document: Document, theme: AttributedStringTheme) -> RenderResult {
-        var renderer = MarkdownRenderer(theme: theme)
+    static func render(
+        document: Document,
+        theme: AttributedStringTheme,
+        baseURL: URL? = nil
+    ) -> RenderResult {
+        var renderer = MarkdownRenderer(theme: theme, baseURL: baseURL)
         let result = renderer.visit(document)
         return RenderResult(
             attributedString: result,
@@ -109,8 +117,9 @@ struct MarkdownRenderer: MarkupVisitor {
         )
     }
 
-    private init(theme: AttributedStringTheme) {
+    private init(theme: AttributedStringTheme, baseURL: URL? = nil) {
         self.theme = theme
+        self.baseURL = baseURL
     }
 
     // MARK: - Font Resolution
@@ -250,6 +259,15 @@ struct MarkdownRenderer: MarkupVisitor {
         }
 
         let language = codeBlock.language?.lowercased()
+
+        // Math/LaTeX blocks → MathAttachment (rendered via SwiftMath).
+        if language == "math" || language == "latex" {
+            return renderMathBlock(latex: code)
+        }
+
+        // PlantUML blocks → syntax-highlighted code for now.
+        // TODO: Async PlantUML rendering as DiagramAttachment (follow-up step).
+
         let result: NSMutableAttributedString
 
         // Attempt syntax highlighting if a language grammar is available.
@@ -275,6 +293,31 @@ struct MarkdownRenderer: MarkupVisitor {
         if let language {
             result.addAttribute(.codeBlockLanguage, value: language, range: fullRange)
         }
+
+        return result
+    }
+
+    /// Renders a LaTeX math expression as a MathAttachment centered in a paragraph.
+    private func renderMathBlock(latex: String) -> NSMutableAttributedString {
+        let attachment = MathAttachment(
+            latex: latex,
+            fontSize: 18,
+            textColor: theme.textColor
+        )
+
+        let result = NSMutableAttributedString(attachment: attachment)
+
+        // Wrap in a centered paragraph style with vertical spacing.
+        let paraStyle = NSMutableParagraphStyle()
+        paraStyle.alignment = .center
+        paraStyle.paragraphSpacingBefore = 8
+        paraStyle.paragraphSpacing = 8
+
+        result.addAttribute(
+            .paragraphStyle,
+            value: paraStyle,
+            range: NSRange(location: 0, length: result.length)
+        )
 
         return result
     }
@@ -434,6 +477,56 @@ struct MarkdownRenderer: MarkupVisitor {
             return nil
         }.joined()
 
+        // Build the original markdown source for copy-as-markdown.
+        let sourceMarkdown: String
+        if let source = image.source {
+            if altText.isEmpty {
+                sourceMarkdown = "![](\(source))"
+            } else {
+                sourceMarkdown = "![\(altText)](\(source))"
+            }
+        } else {
+            sourceMarkdown = altText.isEmpty ? "![]()" : "![\(altText)]()"
+        }
+
+        // Try to resolve and load the image from a local file.
+        if let source = image.source, !source.isEmpty {
+            let imageURL: URL?
+
+            if source.hasPrefix("http://") || source.hasPrefix("https://") {
+                // Remote images: show placeholder text (no network fetching in renderer).
+                imageURL = nil
+            } else if let base = baseURL {
+                // Resolve relative path against the markdown file's directory.
+                imageURL = base.appendingPathComponent(source)
+            } else {
+                imageURL = URL(fileURLWithPath: source)
+            }
+
+            if let url = imageURL, FileManager.default.fileExists(atPath: url.path) {
+                let attachment = ImageAttachment(
+                    url: url,
+                    maxWidth: blockAttachmentDefaultMaxWidth,
+                    sourceMarkdown: sourceMarkdown
+                )
+                let result = NSMutableAttributedString(attachment: attachment)
+
+                // Center the image with paragraph spacing.
+                let paraStyle = NSMutableParagraphStyle()
+                paraStyle.alignment = .center
+                paraStyle.paragraphSpacingBefore = 4
+                paraStyle.paragraphSpacing = 4
+                result.addAttribute(
+                    .paragraphStyle,
+                    value: paraStyle,
+                    range: NSRange(location: 0, length: result.length)
+                )
+
+                return result
+            }
+        }
+
+        // Fallback: show placeholder text for unresolvable images.
         let placeholder = altText.isEmpty ? "[image]" : "[image: \(altText)]"
         return NSMutableAttributedString(string: placeholder, attributes: currentAttributes)
     }
