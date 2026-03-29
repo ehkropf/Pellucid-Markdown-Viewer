@@ -6,7 +6,8 @@ Native macOS markdown viewer. Swift 6 + SwiftUI, macOS 14+. No JavaScript. No Xc
 
 - `make` or `make app` — release .app bundle to `build/Pellucid.app`
 - `make app-debug` — debug .app bundle
-- `make open` — launch the built app
+- `make open` — build (if needed) and launch the app
+- `make install` — build and install to `/Applications/Pellucid.app`
 - `make test` — run tests
 - `make clean` — remove `.build` and `build` directories
 - `make help` — show all targets
@@ -87,10 +88,10 @@ Makefile         — build, test, clean, portindex, checksums targets
 - `LocalImageProvider` uses `maxWidth`/`maxHeight` (not fixed `width`/`height`) — images scale down to fit content area but never upscale
 - `DiagramBlockView` adds white background behind PlantUML diagrams in dark mode — no re-rendering needed, pure view styling
 - `@Environment(\.colorScheme)` does NOT propagate into MarkdownUI block style closures — pass values explicitly or use environment in standalone views like `DiagramBlockView`
-- `.textSelection(.enabled)` removed — it forced I-beam cursor and only worked within individual `Text` views anyway; Cmd+A and "Copy Section" are workarounds until NSTextView-based rendering replaces MarkdownUI
-- `WindowGroup` uses `.handlesExternalEvents(matching: [])` — prevents SwiftUI from creating duplicate windows for file-open events; all file opens route through `AppDelegate.application(_:open:)` → `WindowManager.openFile(url:)` for deduplication
-- MarkdownUI link clicks on macOS bypass SwiftUI's `openURL` environment — `file://` links go through `NSWorkspace` → system handler → AppDelegate; don't rely on `.environment(\.openURL, ...)` for intercepting link clicks
-- `Markdown` view uses both `baseURL` and `imageBaseURL` — both set to document directory so relative links and images resolve correctly
+- `.textSelection(.enabled)` removed — forced I-beam cursor; Cmd+A and "Copy Section" are workarounds until NSTextView-based rendering replaces MarkdownUI
+- `Markdown` view sets both `baseURL` and `imageBaseURL` to document directory — relative links and images resolve correctly
+- MarkdownUI link clicks on macOS bypass SwiftUI's `openURL` environment — `file://` links go through `NSWorkspace` → system handler → AppDelegate; don't use `.environment(\.openURL, ...)` for link interception
+- `WindowGroup` uses `.handlesExternalEvents(matching: [])` — prevents duplicate windows for file-open events; all opens route through AppDelegate → `WindowManager.openFile(url:)`
 - MacPorts Portfile requires `--disable-sandbox` (SPM sandbox conflicts with MacPorts sandbox) and `--cache-path` (build user can't write to default SPM cache)
 
 ## Testing
