@@ -52,18 +52,124 @@ Here is a [link to CommonMark](https://commonmark.org).
 
 ## Code Blocks
 
-```swift
-func greet(name: String) -> String {
-    return "Hello, \(name)!"
+### Bash
+
+```bash
+#!/bin/bash
+for file in *.md; do
+  echo "Processing: $file"
+  wc -w "$file"
+done
+```
+
+### C
+
+```c
+#include <stdio.h>
+
+int main(void) {
+    int nums[] = {3, 1, 4, 1, 5};
+    int sum = 0;
+    for (int i = 0; i < 5; i++)
+        sum += nums[i];
+    printf("sum = %d\n", sum);
+    return 0;
 }
 ```
 
-```python
-def fibonacci(n):
-    if n <= 1:
-        return n
-    return fibonacci(n - 1) + fibonacci(n - 2)
+### C++
+
+```cpp
+#include <vector>
+#include <algorithm>
+
+template <typename T>
+T median(std::vector<T> v) {
+    std::sort(v.begin(), v.end());
+    return v[v.size() / 2];
+}
 ```
+
+### CSS
+
+```css
+:root {
+  --bg: #fdf6e3;
+  --fg: #657b83;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+}
+```
+
+### Go
+
+```go
+package main
+
+import "fmt"
+
+func reverse(s string) string {
+    runes := []rune(s)
+    for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+        runes[i], runes[j] = runes[j], runes[i]
+    }
+    return string(runes)
+}
+
+func main() {
+    fmt.Println(reverse("Pellucid"))
+}
+```
+
+### HTML
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Example</title>
+</head>
+<body>
+  <h1>Hello, World!</h1>
+</body>
+</html>
+```
+
+### Java
+
+```java
+import java.util.List;
+import java.util.stream.Collectors;
+
+public class Example {
+    public static void main(String[] args) {
+        List<String> names = List.of("Alice", "Bob", "Charlie");
+        String result = names.stream()
+            .filter(n -> n.length() > 3)
+            .collect(Collectors.joining(", "));
+        System.out.println(result);
+    }
+}
+```
+
+### JavaScript
+
+```javascript
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  };
+}
+```
+
+### JSON
 
 ```json
 {
@@ -73,6 +179,114 @@ def fibonacci(n):
 }
 ```
 
+### Markdown
+
+```markdown
+# Example
+
+This is **bold** and *italic* text with a [link](https://example.com).
+
+- List item
+- Another item
+```
+
+### Python
+
+```python
+def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n - 1) + fibonacci(n - 2)
+```
+
+### Ruby
+
+```ruby
+class Greeter
+  def initialize(name)
+    @name = name
+  end
+
+  def greet
+    "Hello, #{@name}!"
+  end
+end
+
+puts Greeter.new("World").greet
+```
+
+### Rust
+
+```rust
+fn main() {
+    let words: Vec<&str> = "hello world".split_whitespace().collect();
+    for (i, word) in words.iter().enumerate() {
+        println!("{i}: {word}");
+    }
+}
+```
+
+### Shell
+
+```sh
+#!/bin/sh
+count=$(ls -1 *.md 2>/dev/null | wc -l)
+printf '%d markdown files found\n' "$count"
+```
+
+### SQL
+
+```sql
+SELECT u.name, COUNT(p.id) AS post_count
+FROM users u
+LEFT JOIN posts p ON p.author_id = u.id
+WHERE u.active = true
+GROUP BY u.name
+HAVING COUNT(p.id) > 5
+ORDER BY post_count DESC;
+```
+
+### Swift
+
+```swift
+func greet(name: String) -> String {
+    return "Hello, \(name)!"
+}
+```
+
+### TOML
+
+```toml
+[package]
+name = "example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+```
+
+### TypeScript
+
+```typescript
+interface Document {
+  title: string;
+  content: string;
+  render(): Promise<void>;
+}
+```
+
+### YAML
+
+```yaml
+name: pellucid
+version: 1.0.3
+features:
+  - syntax-highlighting
+  - live-reload
+  - toc-sidebar
+```
+
 ## Tables
 
 | Feature | Status | Notes |
@@ -80,7 +294,7 @@ def fibonacci(n):
 | GFM rendering | Done | Core feature |
 | TOC sidebar | Done | Sidebar navigation |
 | File watching | Done | Live reload |
-| Syntax highlighting | Done | ~20 languages |
+| Syntax highlighting | Done | 19 languages |
 
 ## Horizontal Rule
 

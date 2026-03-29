@@ -11,7 +11,7 @@ A native macOS markdown viewer built with Swift and SwiftUI. No web views, no Ja
 - **GitHub Flavored Markdown** — full GFM spec: tables, task lists, strikethrough, fenced code blocks
 - **Table of contents** — auto-generated sidebar from headings, click to scroll
 - **Live reload** — watches the file for changes and re-renders instantly, keeping your scroll position
-- **Syntax highlighting** — ~20 languages with regex-based tokenization
+- **Syntax highlighting** — 19 languages with regex-based tokenization
 - **LaTeX math** — native rendering via SwiftMath (no MathJax/KaTeX)
 - **PlantUML diagrams** — rendered via CLI subprocess as SVG
 - **Multiple open methods** — File > Open, drag-and-drop, CLI argument, or registered `.md` file handler
@@ -23,7 +23,7 @@ A native macOS markdown viewer built with Swift and SwiftUI. No web views, no Ja
 - Links and images (rendered at actual size)
 - Ordered, unordered, and task lists
 - Tables
-- Fenced code blocks with syntax highlighting (~20 languages)
+- Fenced code blocks with syntax highlighting (19 languages)
 - LaTeX math via `math`/`latex` code blocks
 - PlantUML diagrams via `plantuml` code blocks
 
@@ -83,11 +83,17 @@ ln -sf $(brew --prefix)/opt/pellucid/Pellucid.app /Applications/Pellucid.app
 
 ### Manual
 
-Drag `build/Pellucid.app` to your Applications folder — just like any other Mac app.
-
-Or from the command line:
+Build first, then install:
 
 ```bash
+make
+make install
+```
+
+Or copy the built app yourself:
+
+```bash
+make
 cp -R build/Pellucid.app /Applications/
 ```
 
