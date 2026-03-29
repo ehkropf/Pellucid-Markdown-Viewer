@@ -16,6 +16,7 @@
 
 import SwiftUI
 import MarkdownUI
+import os.log
 
 struct RawMarkdownKey: FocusedValueKey {
     typealias Value = String
@@ -42,6 +43,7 @@ struct ContentView: View {
     @State private var didRestoreState = false
     @SceneStorage("columnVisibility") private var storedVisibility: String = "automatic"
 
+    private static let logger = Logger(subsystem: "Pellucid", category: "ContentView")
     private var isDark: Bool { colorScheme == .dark }
 
     var body: some View {
@@ -111,13 +113,27 @@ struct ContentView: View {
                 } else {
                     ScrollViewReader { proxy in
                         ScrollView {
-                            MarkdownUI.Markdown(document.processedMarkdown, baseURL: document.fileURL?.deletingLastPathComponent(), imageBaseURL: document.fileURL?.deletingLastPathComponent())
+                            MarkdownUI.Markdown(document.processedMarkdown, imageBaseURL: document.fileURL?.deletingLastPathComponent())
                                 .markdownCodeSyntaxHighlighter(AppCodeSyntaxHighlighter(palette: themeManager.selectedTheme.syntaxColors(isDark: isDark)))
                                 .markdownBlockStyle(\.codeBlock) { configuration in
                                     codeBlockView(configuration: configuration)
                                 }
                                 .markdownImageProvider(.local)
                                 .markdownTheme(themeManager.selectedTheme.markdownTheme(isDark: isDark))
+                                .environment(\.openURL, OpenURLAction { url in
+                                    Self.logger.debug("openURL: scheme=\(url.scheme ?? "nil") path=\(url.path) abs=\(url.absoluteString)")
+                                    if url.scheme == nil, let baseDir = document.fileURL?.deletingLastPathComponent() {
+                                        let resolved = baseDir.appendingPathComponent(url.path)
+                                        Self.logger.debug("resolved: \(resolved.absoluteString)")
+                                        if markdownExtensions.contains(resolved.pathExtension.lowercased()) {
+                                            Self.logger.debug("calling openFile")
+                                            windowManager.openFile(url: resolved)
+                                            return .handled
+                                        }
+                                    }
+                                    Self.logger.debug("falling through to systemAction")
+                                    return .systemAction
+                                })
                                 .padding(.horizontal, 32)
                                 .padding(.vertical, 24)
                                 .frame(maxWidth: 860, alignment: .leading)

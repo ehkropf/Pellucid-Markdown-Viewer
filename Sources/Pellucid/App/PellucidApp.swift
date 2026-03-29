@@ -26,7 +26,6 @@ struct PellucidApp: App {
                 .environment(WindowManager.shared)
                 .environment(ThemeManager.shared)
         }
-        .handlesExternalEvents(matching: [])
         .commands {
             AppCommands(windowManager: WindowManager.shared, themeManager: ThemeManager.shared)
         }

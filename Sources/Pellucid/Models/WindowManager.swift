@@ -53,9 +53,7 @@ final class WindowManager {
 
     func unregister(_ document: MarkdownDocument) {
         let id = ObjectIdentifier(document)
-        if let url = document.fileURL, let identity = FileIdentity(url: url) {
-            openDocuments.removeValue(forKey: identity)
-        }
+        Self.logger.debug("unregister: \(document.fileURL?.lastPathComponent ?? "empty"), openDocuments stays \(self.openDocuments.count)")
         if let token = observerTokens.removeValue(forKey: id) {
             NotificationCenter.default.removeObserver(token)
         }
@@ -69,6 +67,9 @@ final class WindowManager {
         }
         if let url = document.fileURL, let identity = FileIdentity(url: url) {
             openDocuments[identity] = document
+            Self.logger.debug("updateMapping: added \(url.lastPathComponent), openDocuments now \(self.openDocuments.count)")
+        } else {
+            Self.logger.debug("updateMapping: no fileURL or identity failed")
         }
     }
 
@@ -76,16 +77,25 @@ final class WindowManager {
     /// Observes `willCloseNotification` to auto-unregister on window close.
     func registerWindow(_ window: NSWindow, for document: MarkdownDocument) {
         let id = ObjectIdentifier(document)
+        Self.logger.debug("registerWindow: \(document.fileURL?.lastPathComponent ?? "empty"), window=\(window.windowNumber)")
         windowMap[id] = window
         nextCascadePoint = window.cascadeTopLeft(from: nextCascadePoint)
+
+        // Re-register document and mapping — unregister() may have cleared
+        // these when SwiftUI replaced the underlying NSWindow.
+        register(document)
+        updateMapping(for: document)
 
         let token = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
             object: window,
             queue: .main
-        ) { [weak self, weak document] _ in
-            Task { @MainActor in
+        ) { [weak self, weak document, weak window] _ in
+            // Defer to next run loop — willCloseNotification fires before
+            // the close completes; check if the window actually closed.
+            DispatchQueue.main.async {
                 guard let self, let document else { return }
+                if let window, window.isVisible { return }
                 self.unregister(document)
             }
         }
@@ -100,25 +110,33 @@ final class WindowManager {
     /// 3. Queue the URL and request a new window via `openWindowAction`.
     func openFile(url: URL) {
         let resolved = url.standardized
+        Self.logger.debug("openFile: \(resolved.absoluteString), openDocuments: \(self.openDocuments.count)")
 
         if let identity = FileIdentity(url: resolved),
            let existing = openDocuments[identity] {
-            activateWindow(for: existing)
-            return
+            if activateWindow(for: existing) {
+                Self.logger.debug("dedup hit — activated existing window")
+                closeEmptyWindows()
+                return
+            }
+            Self.logger.debug("stale entry — cleaning up")
+            openDocuments.removeValue(forKey: identity)
         }
 
         if let empty = emptyDocument() {
+            Self.logger.debug("loading into empty window")
             empty.loadFile(url: resolved)
             updateMapping(for: empty)
             activateWindow(for: empty)
             return
         }
 
+        Self.logger.debug("queueing URL and opening new window")
         urlQueue.append(resolved)
         if let action = openWindowAction {
             action(id: "viewer")
         } else {
-            Self.logger.warning("openWindowAction is nil — URL queued but no window will open until the action is captured")
+            Self.logger.debug("openWindowAction is nil — URL queued but no window will open until the action is captured")
         }
     }
 
@@ -152,10 +170,25 @@ final class WindowManager {
         documents.first { $0.fileURL == nil }
     }
 
-    private func activateWindow(for document: MarkdownDocument) {
+    /// Returns true if the window was activated, false if no window exists.
+    @discardableResult
+    private func activateWindow(for document: MarkdownDocument) -> Bool {
         if let window = windowMap[ObjectIdentifier(document)] {
             window.makeKeyAndOrderFront(nil)
             NSApp.activate()
+            return true
+        }
+        return false
+    }
+
+    /// Closes windows with no loaded file, but only when at least one
+    /// document is loaded (preserves the initial empty window on launch).
+    private func closeEmptyWindows() {
+        guard documents.contains(where: { $0.fileURL != nil }) else { return }
+        for doc in documents where doc.fileURL == nil {
+            if let window = windowMap[ObjectIdentifier(doc)] {
+                window.close()
+            }
         }
     }
 }

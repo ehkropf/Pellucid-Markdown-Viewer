@@ -38,7 +38,6 @@ struct WindowAccessor: NSViewRepresentable {
             super.viewDidMoveToWindow()
             if let window {
                 onWindow?(window)
-                onWindow = nil
             }
         }
     }

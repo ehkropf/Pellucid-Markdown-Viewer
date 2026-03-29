@@ -4,10 +4,7 @@
 
 A native macOS markdown viewer built with Swift and SwiftUI. No web views, no JavaScript, no Electron — just fast, native rendering that feels like a first-class Mac app. Pellucid is a viewer, not an editor. Open a markdown file, see it rendered beautifully, and let your editor of choice handle the writing while Pellucid live-reloads on every save.
 
-<p align="center">
-  <img src="screenshots/empty-state.png" width="45%" alt="Empty state" />
-  <img src="screenshots/test-md.png" width="45%" alt="Rendering test.md" />
-</p>
+![Pellucid themes: Default and Solarized in light and dark modes](screenshots/themes.png)
 
 ## Features
 
@@ -71,6 +68,18 @@ sudo port install Pellucid-Markdown-Viewer/ports/aqua/pellucid +plantuml
 ```
 
 The app installs to `/Applications/MacPorts/Pellucid.app`.
+
+### Homebrew
+
+Requires [Homebrew](https://brew.sh) and Xcode Command Line Tools.
+
+```bash
+git clone https://github.com/ehkropf/Pellucid-Markdown-Viewer.git
+brew install --formula Pellucid-Markdown-Viewer/Formula/pellucid.rb
+
+# Then symlink to /Applications:
+ln -sf $(brew --prefix)/opt/pellucid/Pellucid.app /Applications/Pellucid.app
+```
 
 ### Manual
 

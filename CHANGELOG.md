@@ -9,6 +9,7 @@
 - Deduplicate file-open events: clicking a markdown link reuses existing window
 - `make open` now builds the app if needed
 - `make install` copies app to /Applications
+- Homebrew formula for building from source (`Formula/pellucid.rb`)
 
 ## 1.1.0 — 2026-03-28
 
