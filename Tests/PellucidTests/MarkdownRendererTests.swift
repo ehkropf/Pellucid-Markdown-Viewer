@@ -734,6 +734,38 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertEqual(entries.count, 1)
     }
 
+    // MARK: - Autolink
+
+    func testAutolink() {
+        let result = render("<https://example.com>")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let link = attrs[.link] as? URL
+        XCTAssertEqual(link, URL(string: "https://example.com"))
+        let color = attrs[.foregroundColor] as? NSColor
+        XCTAssertEqual(color, theme.linkColor)
+    }
+
+    func testAutolinkEmail() {
+        let result = render("<user@example.com>")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let link = attrs[.link] as? URL
+        XCTAssertEqual(link, URL(string: "mailto:user@example.com"))
+    }
+
+    // MARK: - Inline HTML
+
+    func testInlineHTMLBreak() {
+        let result = render("Hello<br>world")
+        XCTAssertEqual(result.attributedString.string, "Hello\nworld")
+    }
+
+    func testInlineHTMLOtherTag() {
+        let result = render("Hello<sup>2</sup>world")
+        let text = result.attributedString.string
+        XCTAssertTrue(text.contains("<sup>"))
+        XCTAssertTrue(text.contains("</sup>"))
+    }
+
     // MARK: - Mixed Block Types
 
     func testMixedDocumentBlockTypes() {

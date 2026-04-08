@@ -651,6 +651,20 @@ struct MarkdownRenderer: MarkupVisitor {
         NSMutableAttributedString(string: "\n", attributes: currentAttributes)
     }
 
+    mutating func visitInlineHTML(_ inlineHTML: InlineHTML) -> NSMutableAttributedString {
+        let html = inlineHTML.rawHTML
+
+        if html.lowercased().hasPrefix("<br") {
+            return NSMutableAttributedString(string: "\n", attributes: currentAttributes)
+        }
+
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: theme.codeFont,
+            .foregroundColor: theme.subtleColor,
+        ]
+        return NSMutableAttributedString(string: html, attributes: attrs)
+    }
+
     // MARK: - List Item Helpers
 
     /// Renders a single list item with the appropriate bullet/number marker.
