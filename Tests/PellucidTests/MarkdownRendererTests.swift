@@ -710,6 +710,30 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(foundTableAttachment, "Multi-row table should contain a TableAttachment")
     }
 
+    // MARK: - PlantUML Code Block
+
+    func testPlantUMLCodeBlockPlaceholder() {
+        let result = render("```plantuml\n@startuml\nAlice -> Bob\n@enduml\n```")
+        // PlantUML renders as an attachment character (placeholder).
+        XCTAssertEqual(result.attributedString.string, "\u{FFFC}")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let attachment = attrs[.attachment] as? DiagramAttachment
+        XCTAssertNotNil(attachment, "Should have a DiagramAttachment placeholder")
+    }
+
+    func testPlantUMLSourceMarkdown() {
+        let result = render("```plantuml\n@startuml\nAlice -> Bob\n@enduml\n```")
+        let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
+        let attachment = attrs[.attachment] as? DiagramAttachment
+        XCTAssertTrue(attachment?.sourceMarkdown?.contains("@startuml") ?? false)
+    }
+
+    func testPlantUMLSourceMap() {
+        let result = render("```plantuml\n@startuml\nAlice -> Bob\n@enduml\n```")
+        let entries = result.sourceMap.entries.filter { $0.nodeType == .codeBlock }
+        XCTAssertEqual(entries.count, 1)
+    }
+
     // MARK: - Mixed Block Types
 
     func testMixedDocumentBlockTypes() {

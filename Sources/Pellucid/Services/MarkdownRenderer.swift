@@ -265,8 +265,10 @@ struct MarkdownRenderer: MarkupVisitor {
             return renderMathBlock(latex: code)
         }
 
-        // PlantUML blocks → syntax-highlighted code for now.
-        // TODO: Async PlantUML rendering as DiagramAttachment (follow-up step).
+        // PlantUML blocks → DiagramAttachment placeholder.
+        if language == "plantuml" {
+            return renderPlantUMLPlaceholder(source: code)
+        }
 
         let result: NSMutableAttributedString
 
@@ -319,6 +321,51 @@ struct MarkdownRenderer: MarkupVisitor {
             range: NSRange(location: 0, length: result.length)
         )
 
+        return result
+    }
+
+    /// Renders a PlantUML placeholder as a DiagramAttachment.
+    /// The actual rendering is async; ContentView replaces the placeholder.
+    private func renderPlantUMLPlaceholder(source: String) -> NSMutableAttributedString {
+        let placeholderSize = CGSize(width: 300, height: 60)
+        let placeholderImage = NSImage(size: placeholderSize, flipped: false) { bounds in
+            guard let context = NSGraphicsContext.current?.cgContext else { return false }
+            context.saveGState()
+            context.setFillColor(NSColor.separatorColor.withAlphaComponent(0.2).cgColor)
+            let bgPath = CGPath(roundedRect: bounds, cornerWidth: 8, cornerHeight: 8, transform: nil)
+            context.addPath(bgPath)
+            context.fillPath()
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.systemFont(ofSize: 13, weight: .medium),
+                .foregroundColor: NSColor.secondaryLabelColor,
+            ]
+            let text = NSAttributedString(string: "Rendering diagram\u{2026}", attributes: attrs)
+            let textSize = text.size()
+            let textOrigin = CGPoint(
+                x: (bounds.width - textSize.width) / 2,
+                y: (bounds.height - textSize.height) / 2
+            )
+            text.draw(at: textOrigin)
+            context.restoreGState()
+            return true
+        }
+
+        let attachment = DiagramAttachment(
+            renderedImage: placeholderImage,
+            plantUMLSource: source,
+            isDarkMode: theme.isDark
+        )
+
+        let result = NSMutableAttributedString(attachment: attachment)
+        let paraStyle = NSMutableParagraphStyle()
+        paraStyle.alignment = .center
+        paraStyle.paragraphSpacingBefore = 8
+        paraStyle.paragraphSpacing = 8
+        result.addAttribute(
+            .paragraphStyle,
+            value: paraStyle,
+            range: NSRange(location: 0, length: result.length)
+        )
         return result
     }
 

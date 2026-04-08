@@ -36,6 +36,7 @@ struct ContentView: View {
     @State private var selectedHeadingID: String?
     @State private var showCopiedToast = false
     @State private var toastDismissTask: Task<Void, Never>?
+    @State private var plantUMLTask: Task<Void, Never>?
     @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
     /// Guards against onChange(of: columnVisibility) firing during onAppear
     /// restoration, which would overwrite the stored value with the default.
@@ -221,5 +222,90 @@ struct ContentView: View {
             theme: theme,
             baseURL: baseURL
         )
+
+        renderPlantUMLDiagrams()
+    }
+
+    /// Finds DiagramAttachment placeholders in the current render result and
+    /// replaces them asynchronously with rendered PlantUML diagrams.
+    private func renderPlantUMLDiagrams() {
+        guard let result = renderResult else { return }
+
+        let attrString = result.attributedString
+
+        // Collect placeholder attachments with their ranges and source text.
+        struct PlantUMLEntry {
+            let range: NSRange
+            let source: String
+            let isDarkMode: Bool
+        }
+
+        var entries: [PlantUMLEntry] = []
+        attrString.enumerateAttribute(
+            .attachment,
+            in: NSRange(location: 0, length: attrString.length)
+        ) { value, range, _ in
+            if let diagram = value as? DiagramAttachment {
+                entries.append(PlantUMLEntry(
+                    range: range,
+                    source: diagram.plantUMLSource,
+                    isDarkMode: diagram.isDarkMode
+                ))
+            }
+        }
+
+        guard !entries.isEmpty else { return }
+
+        // Cancel any in-flight PlantUML rendering task to avoid stale writes.
+        plantUMLTask?.cancel()
+
+        plantUMLTask = Task {
+            guard await PlantUMLRenderer.shared.isAvailable() else {
+                Self.logger.info("PlantUML is not available; diagram placeholders will remain")
+                return
+            }
+            guard !Task.isCancelled else { return }
+
+            // Work on a mutable copy of the attributed string.
+            let mutableCopy = NSMutableAttributedString(attributedString: attrString)
+
+            // Process entries in reverse order so range offsets remain valid.
+            for entry in entries.reversed() {
+                do {
+                    let image = try await PlantUMLRenderer.shared.render(source: entry.source)
+                    guard !Task.isCancelled else { return }
+
+                    let renderedAttachment = DiagramAttachment(
+                        renderedImage: image,
+                        plantUMLSource: entry.source,
+                        isDarkMode: entry.isDarkMode
+                    )
+                    let replacementString = NSMutableAttributedString(attachment: renderedAttachment)
+
+                    // Preserve paragraph style from the placeholder.
+                    let existingAttrs = mutableCopy.attributes(at: entry.range.location, effectiveRange: nil)
+                    if let paraStyle = existingAttrs[.paragraphStyle] {
+                        replacementString.addAttribute(
+                            .paragraphStyle,
+                            value: paraStyle,
+                            range: NSRange(location: 0, length: replacementString.length)
+                        )
+                    }
+
+                    mutableCopy.replaceCharacters(in: entry.range, with: replacementString)
+                } catch {
+                    Self.logger.warning("PlantUML render failed: \(error.localizedDescription)")
+                }
+            }
+
+            // Only update if this task was not superseded by a newer render pass.
+            guard !Task.isCancelled else { return }
+
+            // Update the render result with the new attributed string.
+            renderResult = RenderResult(
+                attributedString: mutableCopy,
+                sourceMap: result.sourceMap
+            )
+        }
     }
 }
