@@ -36,9 +36,9 @@ Native macOS markdown viewer. Swift 6 + SwiftUI, macOS 14+. No JavaScript. No Xc
 ```
 Sources/Pellucid/
   App/           — @main entry point (PellucidApp), menu commands (AppCommands)
-  Models/        — MarkdownDocument, WindowManager, FileIdentity, TOCEntry, FileWatcher, ThemeManager, AppTheme, SolarizedColors, Theme+Solarized
-  Views/         — DocumentWindowView, ContentView, WindowAccessor, TOCSidebarView, MathBlockView, DiagramBlockView
-  Services/      — TOCExtractor, SyntaxHighlighter, PlantUMLRenderer, LocalImageProvider
+  Models/        — MarkdownDocument, WindowManager, FileIdentity, TOCEntry, FileWatcher, ThemeManager, AppTheme, SolarizedColors, AttributedStringTheme, SourceMap
+  Views/         — DocumentWindowView, ContentView, WindowAccessor, TOCSidebarView, MarkdownTextView, BlockAttachment
+  Services/      — TOCExtractor, SyntaxHighlighter, PlantUMLRenderer, MarkdownRenderer
   Utilities/     — Slugify, MathPreprocessor, Clipboard
 Tests/PellucidTests/ — test target (logic tests only, no UI tests)
 Resources/       — Info.plist, AppIcon.{svg,png,icns}, icon-philosophy.md
@@ -52,10 +52,13 @@ Makefile         — build, test, clean, portindex, checksums targets
 - `DocumentWindowView` wraps `ContentView` per window — creates `@StateObject` `MarkdownDocument`, calls `WindowManager.attachDocument()` on appear, captures `NSWindow` via `WindowAccessor`
 - All file-open paths (File > Open, drag-drop, CLI args, Finder) converge through `WindowManager.openFile(url:)`
 - `MarkdownDocument` is a clean `@MainActor ObservableObject` — owns file URL, raw text, TOC, FileWatcher; `errorMessage` is `private(set)` with `setError()` for external callers
-- MarkdownUI renders GFM with theme from `ThemeManager` (`.markdownTheme(themeManager.selectedTheme.markdownTheme(isDark:))`)
-- Code blocks dispatch via `.markdownBlockStyle(\.codeBlock)`: `math`/`latex` → MathBlockView, `plantuml` → DiagramBlockView, else → syntax-highlighted
+- `MarkdownRenderer` (struct, `MarkupVisitor`) walks swift-markdown AST → `NSAttributedString` + `SourceMap`; block content (math, diagrams, tables, images) embedded via `NSTextAttachment` subclasses (`MathAttachment`, `DiagramAttachment`, `TableAttachment`, `ImageAttachment`)
+- `MarkdownTextView` (NSViewRepresentable) wraps read-only `MarkdownNSTextView` (NSTextView subclass) — provides text selection, Cmd+F find, custom background drawing for code blocks/blockquotes/heading dividers/thematic breaks
+- `SourceMap` provides bidirectional attributed string ↔ source line mapping for copy-as-markdown, Cmd+click to editor, and scroll-to-heading
+- `AttributedStringTheme` provides all fonts, colors, and paragraph styles for the NSTextView renderer; `AppTheme` has factory methods for Default and Solarized themes
+- PlantUML diagrams rendered asynchronously via `PlantUMLRenderer` actor; initial render produces placeholder `DiagramAttachment`, replaced when subprocess completes
 - TOC extracted from swift-markdown AST via `MarkupWalker`, displayed in `NavigationSplitView` sidebar
-- `ScrollViewReader` handles click-to-scroll from TOC to heading
+- Scroll-to-heading uses `headingAnchorID` attribute + `showFindIndicator` for visual feedback
 - FileWatcher uses `DispatchSource` with 250ms trailing-edge debounce; handles atomic writes (delete+recreate)
 - Sidebar visibility persisted via `@SceneStorage` string bridge with race-safe restore guard (`didRestoreState`)
 - `ThemeManager` (`@MainActor @Observable` singleton) manages app-wide theme (Default, Solarized) via `AppTheme` enum; system appearance drives light/dark
@@ -68,15 +71,13 @@ Makefile         — build, test, clean, portindex, checksums targets
 - **Swift 6 strict concurrency** — `swift-tools-version: 6.0`. Use `@MainActor`, `Sendable`, `@preconcurrency import` as needed
 - **No JavaScript** — all rendering is native Swift/SwiftUI
 - **MacPorts over Homebrew** — PlantUML at `/opt/local/bin/plantuml`
-- **slugify() must match MarkdownUI's internal `kebabCased()`** — TOC scroll-to-heading depends on ID alignment
-- **MarkdownUI already attaches `.id()` to headings** — no custom theme heading override needed
+- **slugify() must produce matching IDs in both TOCExtractor and MarkdownRenderer** — scroll-to-heading depends on ID alignment
 - PlantUML uses `-pipe -tsvg` (not `-tpng` — PNG is pixelated)
 
 ## Dependencies (SPM)
 
 - `swift-markdown` (swiftlang) — GFM AST parsing
-- `swift-markdown-ui` (gonzalezreal) — SwiftUI markdown rendering, `MarkdownUI` module
-- `SwiftMath` (mgriebling) — LaTeX math via `MTMathUILabel` (NSViewRepresentable)
+- `SwiftMath` (mgriebling) — LaTeX math via MTMathImage (NSImage rendering)
 
 ## Gotchas
 
@@ -88,24 +89,24 @@ Makefile         — build, test, clean, portindex, checksums targets
 - `WindowAccessor.viewDidMoveToWindow` must NOT nil out `onWindow` — SwiftUI may replace the underlying NSWindow, and `registerWindow` must fire again to restore `windowMap`; `registerWindow` also calls `register` and `updateMapping` to restore state after any `unregister`
 - `WindowManager.openWindowAction` captured once from first window via `captureOpenWindowAction()` — idempotent, set-once
 - The .app bundle must include SwiftMath's `.bundle` resources — math rendering breaks without them
-- TOCExtractor uses `Heading.plainText` (custom extension) that must match MarkdownUI's `renderPlainText()`
+- TOCExtractor uses `Heading.plainText` (custom extension) that must match MarkdownRenderer's heading text extraction — both feed into `slugify()` for anchor IDs
 - FileWatcher DispatchSource handlers must use `MainActor.assumeIsolated` — source queue is `.main` but closures are non-isolated
 - `markdownExtensions` constant in Slugify.swift is shared by AppCommands and ContentView — keep in sync
 - PlantUML subprocess sets `JAVA_TOOL_OPTIONS=-Djava.awt.headless=true` — without this, Java's AWT steals app focus
 - `NavigationSplitView` uses `.balanced` style — prevents sidebar from being pushed off-screen during resize
-- `LocalImageProvider` uses `maxWidth`/`maxHeight` (not fixed `width`/`height`) — images scale down to fit content area but never upscale
-- `DiagramBlockView` adds white background behind PlantUML diagrams in dark mode — no re-rendering needed, pure view styling
-- `@Environment(\.colorScheme)` does NOT propagate into MarkdownUI block style closures — pass values explicitly or use environment in standalone views like `DiagramBlockView`
-- `.textSelection(.enabled)` removed — forced I-beam cursor; Cmd+A ("Copy All") and "Copy Section" are workarounds until NSTextView-based rendering replaces MarkdownUI
-- `Markdown` view uses `imageBaseURL` (not `baseURL`) — `baseURL` would make relative links resolve to `file://` URLs, which bypass the `openURL` environment on macOS; without `baseURL`, relative links stay scheme-less and route through the `openURL` handler on the Markdown view
-- MarkdownUI `file://` link clicks on macOS bypass SwiftUI's `openURL` environment — they go through `NSWorkspace` directly; use scheme-less URLs + `openURL` handler instead
+- `MarkdownRenderer` is a synchronous `MarkupVisitor` struct — PlantUML rendering is async and handled separately in ContentView after the initial render pass
+- `MarkdownNSTextView.drawBackground(in:)` only processes the visible glyph range — avoids full-document enumeration on every paint
+- `RenderResult` is `@unchecked Sendable` — the `NSAttributedString` is only produced and consumed on `@MainActor`; do not pass across actor boundaries
+- Link click interception is handled by `MarkdownTextView.Coordinator` as `NSTextViewDelegate` — relative markdown links open in new Pellucid windows, `file://` markdown links are intercepted, other links delegate to system
+- `nonisolated(unsafe)` on `scrollObserver` in `MarkdownNSTextView` is correct — only accessed from `deinit` which is non-isolated, but the observer is always created/removed on MainActor
+- Copy behavior: Cmd+C inside a code block copies verbatim code text; outside a code block, copies raw markdown source via SourceMap lookup; fallback to plain text if SourceMap lookup fails
 - MacPorts Portfile requires `--disable-sandbox` (SPM sandbox conflicts with MacPorts sandbox) and `--cache-path` (build user can't write to default SPM cache)
 
 ## Testing
 
 - No TDD — unit tests for logic only
 - Visual acceptance testing via `test.md` (covers GFM, code blocks, math, PlantUML)
-- Tests across 6 files: SlugifyTests, TOCExtractorTests, FileIdentityTests, MathPreprocessorTests, SyntaxHighlighterTests, AppThemeTests
+- Tests across 10 files: SlugifyTests, TOCExtractorTests, FileIdentityTests, MathPreprocessorTests, SyntaxHighlighterTests, AppThemeTests, AttributedStringThemeTests, BlockAttachmentTests, MarkdownRendererTests, SourceMapTests
 - All tests use XCTest for framework consistency
 
 ## Code Style
