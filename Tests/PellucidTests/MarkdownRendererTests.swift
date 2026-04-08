@@ -649,6 +649,67 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertEqual(entries.count, 1)
     }
 
+    // MARK: - Table
+
+    func testSimpleTableRendersAsAttachment() {
+        let markdown = """
+        | A | B |
+        |---|---|
+        | 1 | 2 |
+        """
+        let result = render(markdown)
+        let text = result.attributedString.string
+
+        // Table should render as a single attachment character.
+        XCTAssertTrue(text.contains("\u{FFFC}"), "Table should render as attachment character")
+
+        // The attachment should be a TableAttachment.
+        let attrString = result.attributedString
+        var foundTableAttachment = false
+        attrString.enumerateAttribute(.attachment, in: NSRange(location: 0, length: attrString.length)) { value, _, _ in
+            if value is TableAttachment {
+                foundTableAttachment = true
+            }
+        }
+        XCTAssertTrue(foundTableAttachment, "Should contain a TableAttachment")
+    }
+
+    func testTableSourceMap() {
+        let markdown = """
+        | A | B |
+        |---|---|
+        | 1 | 2 |
+        """
+        let result = render(markdown)
+        let tableEntries = result.sourceMap.entries.filter { $0.nodeType == .table }
+        XCTAssertEqual(tableEntries.count, 1, "Table should have a source map entry with .table node type")
+    }
+
+    func testTableMultipleBodyRows() {
+        let markdown = """
+        | Name  | Value |
+        |-------|-------|
+        | Alpha | 1     |
+        | Beta  | 2     |
+        | Gamma | 3     |
+        """
+        let result = render(markdown)
+        let text = result.attributedString.string
+
+        // Should still render as an attachment.
+        XCTAssertTrue(text.contains("\u{FFFC}"), "Multi-row table should render as attachment character")
+
+        // Should be a TableAttachment.
+        let attrString = result.attributedString
+        var foundTableAttachment = false
+        attrString.enumerateAttribute(.attachment, in: NSRange(location: 0, length: attrString.length)) { value, _, _ in
+            if value is TableAttachment {
+                foundTableAttachment = true
+            }
+        }
+        XCTAssertTrue(foundTableAttachment, "Multi-row table should contain a TableAttachment")
+    }
+
     // MARK: - Mixed Block Types
 
     func testMixedDocumentBlockTypes() {

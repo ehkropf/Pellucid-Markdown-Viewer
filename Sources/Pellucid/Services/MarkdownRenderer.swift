@@ -411,6 +411,65 @@ struct MarkdownRenderer: MarkupVisitor {
         return NSMutableAttributedString(string: html, attributes: attrs)
     }
 
+    mutating func visitTable(_ table: Table) -> NSMutableAttributedString {
+        // Collect column alignments.
+        let columnAlignments: [TableColumnAlignment] = table.columnAlignments.map { alignment in
+            switch alignment {
+            case .left: .left
+            case .center: .center
+            case .right: .right
+            case nil: .left
+            }
+        }
+
+        // Render header cells with bold font.
+        let previousTraits = fontTraits
+        fontTraits.insert(.bold)
+        var headerCells: [NSAttributedString] = []
+        let head = table.head
+        for cell in head.cells {
+            let cellContent = visitChildren(of: cell)
+            headerCells.append(cellContent)
+        }
+        fontTraits = previousTraits
+
+        // Render body cells.
+        var bodyRows: [[NSAttributedString]] = []
+        let body = table.body
+        for row in body.rows {
+            var rowCells: [NSAttributedString] = []
+            for cell in row.cells {
+                let cellContent = visitChildren(of: cell)
+                rowCells.append(cellContent)
+            }
+            bodyRows.append(rowCells)
+        }
+
+        // Create the TableAttachment.
+        let attachment = TableAttachment(
+            headerRow: headerCells,
+            bodyRows: bodyRows,
+            columnAlignments: columnAlignments,
+            theme: theme,
+            sourceMarkdown: nil
+        )
+
+        let result = NSMutableAttributedString(attachment: attachment)
+
+        // Wrap in a centered paragraph style with vertical spacing.
+        let paraStyle = NSMutableParagraphStyle()
+        paraStyle.alignment = .center
+        paraStyle.paragraphSpacingBefore = 8
+        paraStyle.paragraphSpacing = 8
+        result.addAttribute(
+            .paragraphStyle,
+            value: paraStyle,
+            range: NSRange(location: 0, length: result.length)
+        )
+
+        return result
+    }
+
     // MARK: - MarkupVisitor — Inline Nodes
 
     mutating func visitText(_ text: Markdown.Text) -> NSMutableAttributedString {
