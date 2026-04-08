@@ -200,7 +200,7 @@ final class DiagramAttachment: NSTextAttachment, MarkdownAttachment {
     // MARK: - Dark Mode Background
 
     /// Composites the diagram onto a white rounded-rect background, matching
-    /// DiagramBlockView's dark mode treatment.
+    /// the previous DiagramBlockView dark mode treatment.
     private static func addWhiteBackground(
         to image: NSImage,
         size: CGSize,
@@ -270,7 +270,7 @@ final class MathAttachment: NSTextAttachment, MarkdownAttachment {
     ///
     /// - Parameters:
     ///   - latex: The LaTeX math expression.
-    ///   - fontSize: Font size for rendering (default 18pt, matching MathBlockView).
+    ///   - fontSize: Font size for rendering (default 18pt).
     ///   - textColor: The text color for the math expression.
     ///   - maxWidth: Maximum display width (math is centered, not scaled).
     init(
