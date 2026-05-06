@@ -162,6 +162,7 @@ struct ContentView: View {
                     .allowsHitTesting(false)
             }
         }
+        .background(themeManager.selectedTheme.windowBackgroundColor(isDark: isDark))
         .onReceive(NotificationCenter.default.publisher(for: .didCopyToClipboard)) { _ in
             toastDismissTask?.cancel()
             withAnimation(.easeIn(duration: 0.15)) {

@@ -139,24 +139,32 @@ final class AttributedStringThemeTests: XCTestCase {
     func testBodyParagraphSpacing() {
         let theme = AppTheme.default.attributedStringTheme(isDark: false)
         let style = theme.bodyParagraphStyle
-        XCTAssertEqual(style.paragraphSpacing, 16.0)
+        XCTAssertEqual(style.paragraphSpacing, 12.0)
         XCTAssertEqual(style.lineSpacing, 4.0)  // 0.25 * 16
     }
 
     func testHeadingParagraphSpacing() {
         let theme = AppTheme.default.attributedStringTheme(isDark: false)
         let style = theme.headingParagraphStyle
-        XCTAssertEqual(style.paragraphSpacingBefore, 24.0)
-        XCTAssertEqual(style.paragraphSpacing, 16.0)
+        XCTAssertEqual(style.paragraphSpacingBefore, 18.0)
+        XCTAssertEqual(style.paragraphSpacing, 14.0)
         XCTAssertEqual(style.lineSpacing, 2.0)  // 0.125 * 16
     }
 
     func testBlockquoteParagraphIndent() {
         let theme = AppTheme.default.attributedStringTheme(isDark: false)
-        let style = theme.blockquoteParagraphStyle
+        let style = theme.blockquoteParagraphStyle(level: 1)
         let expectedIndent = 16.0 * 1.2  // 0.2em bar + 1em padding
         XCTAssertEqual(style.headIndent, expectedIndent, accuracy: 0.1)
         XCTAssertEqual(style.firstLineHeadIndent, expectedIndent, accuracy: 0.1)
+    }
+
+    func testBlockquoteNestedParagraphIndent() {
+        let theme = AppTheme.default.attributedStringTheme(isDark: false)
+        let level1 = theme.blockquoteParagraphStyle(level: 1)
+        let level2 = theme.blockquoteParagraphStyle(level: 2)
+        XCTAssertGreaterThan(level2.headIndent, level1.headIndent)
+        XCTAssertEqual(level2.headIndent, level1.headIndent * 2, accuracy: 0.1)
     }
 
     func testListItemParagraphNesting() {

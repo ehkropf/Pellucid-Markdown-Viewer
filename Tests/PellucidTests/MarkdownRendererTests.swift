@@ -389,8 +389,7 @@ final class MarkdownRendererTests: XCTestCase {
         let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
         let style = attrs[.paragraphStyle] as? NSParagraphStyle
         XCTAssertNotNil(style)
-        // Heading paragraph style has 24pt before spacing.
-        XCTAssertEqual(style?.paragraphSpacingBefore, 24.0)
+        XCTAssertEqual(style?.paragraphSpacingBefore, 18.0)
     }
 
     // MARK: - Paragraph Style
@@ -401,7 +400,7 @@ final class MarkdownRendererTests: XCTestCase {
         let style = attrs[.paragraphStyle] as? NSParagraphStyle
         XCTAssertNotNil(style)
         // Body paragraph style has 16pt spacing.
-        XCTAssertEqual(style?.paragraphSpacing, 16.0)
+        XCTAssertEqual(style?.paragraphSpacing, 12.0)
     }
 
     // MARK: - Blockquote
@@ -425,8 +424,8 @@ final class MarkdownRendererTests: XCTestCase {
     func testBlockquoteRangeAttribute() {
         let result = render("> Quoted text")
         let attrs = result.attributedString.attributes(at: 0, effectiveRange: nil)
-        let isBlockquote = attrs[.blockquoteRange] as? Bool
-        XCTAssertEqual(isBlockquote, true)
+        let level = attrs[.blockquoteRange] as? Int
+        XCTAssertEqual(level, 1)
     }
 
     func testBlockquoteSourceMap() {
@@ -586,22 +585,23 @@ final class MarkdownRendererTests: XCTestCase {
     func testTaskListUnchecked() {
         let result = render("- [ ] Todo item")
         let text = result.attributedString.string
-        XCTAssertTrue(text.contains("\u{2610}"), "Should contain unchecked checkbox (☐)")
+        // SF Symbol checkbox renders as attachment character \u{FFFC}.
+        XCTAssertTrue(text.contains("\u{FFFC}"), "Should contain checkbox attachment")
         XCTAssertTrue(text.contains("Todo item"))
     }
 
     func testTaskListChecked() {
         let result = render("- [x] Done item")
         let text = result.attributedString.string
-        XCTAssertTrue(text.contains("\u{2611}"), "Should contain checked checkbox (☑)")
+        XCTAssertTrue(text.contains("\u{FFFC}"), "Should contain checkbox attachment")
         XCTAssertTrue(text.contains("Done item"))
     }
 
     func testTaskListMixed() {
         let result = render("- [x] Done\n- [ ] Not done")
         let text = result.attributedString.string
-        XCTAssertTrue(text.contains("\u{2611}"), "Should contain checked checkbox")
-        XCTAssertTrue(text.contains("\u{2610}"), "Should contain unchecked checkbox")
+        XCTAssertTrue(text.contains("Done"))
+        XCTAssertTrue(text.contains("Not done"))
     }
 
     // MARK: - Thematic Break

@@ -33,10 +33,10 @@ protocol MarkdownAttachment {
 
 // MARK: - Default Max Width
 
-/// Default maximum content width for block attachments (~860pt matches current
-/// ContentView layout width). Callers should pass the actual text container width
-/// when available.
-let blockAttachmentDefaultMaxWidth: CGFloat = 860.0
+/// Default maximum content width for block attachments. Matches the centered
+/// content column in MarkdownTextView (740pt) minus a small visual breathing
+/// margin so wide diagrams/images don't touch the column edges.
+let blockAttachmentDefaultMaxWidth: CGFloat = 700.0
 
 // MARK: - ImageAttachment
 
@@ -123,6 +123,18 @@ final class ImageAttachment: NSTextAttachment, MarkdownAttachment {
             height: originalSize.height * scale
         )
     }
+
+    /// Scales an image size to fill maxWidth while preserving aspect ratio.
+    /// Scales both up and down — used for vector content (SVG diagrams) that
+    /// should fill the available width regardless of intrinsic pixel size.
+    static func scaledToFit(for originalSize: CGSize, maxWidth: CGFloat) -> CGSize {
+        guard originalSize.width > 0 else { return originalSize }
+        let scale = maxWidth / originalSize.width
+        return CGSize(
+            width: originalSize.width * scale,
+            height: originalSize.height * scale
+        )
+    }
 }
 
 // MARK: - DiagramAttachment
@@ -169,7 +181,7 @@ final class DiagramAttachment: NSTextAttachment, MarkdownAttachment {
 
         super.init(data: nil, ofType: nil)
 
-        let scaledSize = ImageAttachment.scaledSize(for: renderedImage.size, maxWidth: maxWidth)
+        let scaledSize = ImageAttachment.scaledToFit(for: renderedImage.size, maxWidth: maxWidth)
 
         if isDarkMode {
             // Composite the diagram onto a white background with rounded corners.

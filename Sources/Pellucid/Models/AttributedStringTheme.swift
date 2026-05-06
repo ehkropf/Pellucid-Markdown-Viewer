@@ -141,25 +141,33 @@ struct AttributedStringTheme: Sendable {
 
     // MARK: - Paragraph Styles
 
-    /// Body paragraph style: line spacing ~0.25em (4pt at 16pt base), bottom margin 16pt.
+    /// Body paragraph style: line spacing ~0.25em (4pt at 16pt base).
+    /// paragraphSpacing is the space AFTER this paragraph (before the next).
+    /// Combined with heading's paragraphSpacingBefore, produces the correct gaps.
     var bodyParagraphStyle: NSMutableParagraphStyle {
         let style = NSMutableParagraphStyle()
         style.lineSpacing = Self.bodyFontSize * 0.25  // 4pt
-        style.paragraphSpacing = 16.0
+        style.paragraphSpacing = 12.0
         return style
     }
 
-    /// Heading paragraph style: top margin 24pt, bottom 16pt, line spacing ~0.125em.
+    /// Heading paragraph style: extra space before so headings get visual breathing room
+    /// from the preceding block, and a moderate gap after for the heading rule + body.
+    /// NSTextView stacks paragraphSpacing + paragraphSpacingBefore (unlike CSS margin
+    /// collapse), so the effective body→heading gap is body.paragraphSpacing + this value.
     var headingParagraphStyle: NSMutableParagraphStyle {
         let style = NSMutableParagraphStyle()
         style.lineSpacing = Self.bodyFontSize * 0.125  // 2pt
-        style.paragraphSpacingBefore = 24.0
-        style.paragraphSpacing = 16.0
+        style.paragraphSpacingBefore = 18.0
+        style.paragraphSpacing = 14.0
         return style
     }
 
-    /// Code block paragraph style: line spacing ~0.225em, no extra paragraph spacing.
-    /// Includes head indent to keep text inside the code block background padding.
+    /// Code block paragraph style: line spacing ~0.225em, no per-paragraph spacing
+    /// (each newline inside a code block is its own NSTextView paragraph; non-zero
+    /// paragraphSpacing here would create visible gaps between every line).
+    /// Includes head indent so text sits inside the visual background padding drawn
+    /// by MarkdownNSTextView.
     var codeBlockParagraphStyle: NSMutableParagraphStyle {
         let style = NSMutableParagraphStyle()
         let codeFontSize = Self.bodyFontSize * Self.codeFontSizeMultiplier
@@ -171,10 +179,12 @@ struct AttributedStringTheme: Sendable {
     }
 
     /// Blockquote paragraph style: indented to account for accent bar + padding.
-    /// Left indent ~1.2em (bar width 0.2em + padding 1em).
-    var blockquoteParagraphStyle: NSMutableParagraphStyle {
+    /// Left indent ~1.2em per nesting level (bar width 0.2em + padding 1em).
+    /// - Parameter level: Nesting level (1-based). Each level adds additional indent.
+    func blockquoteParagraphStyle(level: Int = 1) -> NSMutableParagraphStyle {
         let style = NSMutableParagraphStyle()
-        let indent = Self.bodyFontSize * 1.2  // 0.2em bar + 1em padding
+        let perLevel = Self.bodyFontSize * 1.2  // 0.2em bar + 1em padding
+        let indent = perLevel * CGFloat(level)
         style.headIndent = indent
         style.firstLineHeadIndent = indent
         style.lineSpacing = Self.bodyFontSize * 0.25
@@ -192,6 +202,7 @@ struct AttributedStringTheme: Sendable {
         style.firstLineHeadIndent = indent - Self.bodyFontSize  // hang the bullet/number
         style.lineSpacing = Self.bodyFontSize * 0.25
         style.paragraphSpacingBefore = Self.bodyFontSize * 0.25  // margin top 0.25em
+        style.paragraphSpacing = 2.0  // small gap after each item; list→next-block gap stacks with next block's spacingBefore
         let tabStop = NSTextTab(textAlignment: .left, location: indent)
         style.tabStops = [tabStop]
         style.defaultTabInterval = 36.0

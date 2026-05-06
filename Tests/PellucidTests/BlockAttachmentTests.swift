@@ -106,8 +106,10 @@ final class BlockAttachmentTests: XCTestCase {
             maxWidth: 860
         )
 
-        XCTAssertEqual(attachment.bounds.width, 300, accuracy: 0.01)
-        XCTAssertEqual(attachment.bounds.height, 200, accuracy: 0.01)
+        // Diagrams scale to fill maxWidth (SVG content is resolution-independent).
+        // 300x200 scaled to 860 width: height = 200 * (860/300) = 573.33
+        XCTAssertEqual(attachment.bounds.width, 860, accuracy: 0.01)
+        XCTAssertEqual(attachment.bounds.height, 573.33, accuracy: 0.01)
     }
 
     func testDiagramAttachment_darkMode_addsPadding() {
@@ -119,9 +121,10 @@ final class BlockAttachmentTests: XCTestCase {
             maxWidth: 860
         )
 
-        // Dark mode adds 8pt padding on each side = 16pt total.
-        XCTAssertEqual(attachment.bounds.width, 316, accuracy: 0.01)
-        XCTAssertEqual(attachment.bounds.height, 216, accuracy: 0.01)
+        // Diagrams scale to fill maxWidth, then dark mode adds 8pt padding on each side.
+        // 300x200 scaled to 860 width: height = 573.33, then +16pt padding each dimension.
+        XCTAssertEqual(attachment.bounds.width, 876, accuracy: 0.01)
+        XCTAssertEqual(attachment.bounds.height, 589.33, accuracy: 0.01)
     }
 
     // MARK: - MathAttachment

@@ -95,6 +95,9 @@ struct MarkdownRenderer: MarkupVisitor {
     /// Whether we are currently inside a blockquote (to apply blockquote text color).
     private var insideBlockquote = false
 
+    /// Current blockquote nesting depth (0-based). Incremented for each nested blockquote.
+    private var blockquoteNestingLevel = 0
+
     // MARK: - Public API
 
     /// Renders a markdown document into an attributed string with source mapping.
@@ -188,8 +191,8 @@ struct MarkdownRenderer: MarkupVisitor {
         for child in paragraph.children {
             result.append(visit(child))
         }
-        // Apply body or blockquote paragraph style to the entire paragraph.
-        let paragraphStyle = insideBlockquote ? theme.blockquoteParagraphStyle : theme.bodyParagraphStyle
+        // Apply body paragraph style. Blockquote indent is applied by visitBlockQuote.
+        let paragraphStyle = theme.bodyParagraphStyle
         result.addAttribute(
             .paragraphStyle,
             value: paragraphStyle,
@@ -228,6 +231,8 @@ struct MarkdownRenderer: MarkupVisitor {
     mutating func visitBlockQuote(_ blockQuote: BlockQuote) -> NSMutableAttributedString {
         let previousInsideBlockquote = insideBlockquote
         insideBlockquote = true
+        blockquoteNestingLevel += 1
+        let currentLevel = blockquoteNestingLevel
 
         let result = NSMutableAttributedString()
         var isFirstChild = true
@@ -244,9 +249,17 @@ struct MarkdownRenderer: MarkupVisitor {
 
         let fullRange = NSRange(location: 0, length: result.length)
 
-        // Mark the entire blockquote for accent bar drawing.
-        result.addAttribute(.blockquoteRange, value: true, range: fullRange)
+        // Only mark ranges not already claimed by a deeper nested blockquote.
+        // Without this, the outer blockquote's level would overwrite the inner's.
+        let paragraphStyle = theme.blockquoteParagraphStyle(level: currentLevel)
+        result.enumerateAttribute(.blockquoteRange, in: fullRange, options: []) { value, range, _ in
+            if value == nil {
+                result.addAttribute(.blockquoteRange, value: currentLevel, range: range)
+                result.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
+            }
+        }
 
+        blockquoteNestingLevel -= 1
         insideBlockquote = previousInsideBlockquote
         return result
     }
@@ -677,20 +690,47 @@ struct MarkdownRenderer: MarkupVisitor {
         let textColor = insideBlockquote ? theme.blockquoteTextColor : theme.textColor
 
         // Determine the marker.
-        let marker: String
-        if let checkbox = listItem.checkbox {
-            marker = checkbox == .checked ? "\u{2611}\t" : "\u{2610}\t"  // ☑ / ☐
-        } else if ordered {
-            marker = "\(index).\t"
-        } else {
-            marker = "\u{2022}\t"  // •
-        }
-
         let markerAttrs: [NSAttributedString.Key: Any] = [
             .font: theme.bodyFont,
             .foregroundColor: textColor,
         ]
-        let result = NSMutableAttributedString(string: marker, attributes: markerAttrs)
+
+        let result: NSMutableAttributedString
+        if let checkbox = listItem.checkbox {
+            // Use SF Symbol for task list checkboxes.
+            let symbolName = checkbox == .checked ? "checkmark.square.fill" : "square"
+            let symbolConfig = NSImage.SymbolConfiguration(
+                pointSize: AttributedStringTheme.bodyFontSize * 0.85,
+                weight: .regular
+            )
+            if let symbolImage = NSImage(
+                systemSymbolName: symbolName,
+                accessibilityDescription: checkbox == .checked ? "Completed" : "Incomplete"
+            )?.withSymbolConfiguration(symbolConfig) {
+                let attachment = NSTextAttachment()
+                attachment.image = symbolImage
+                // Adjust bounds to align with text baseline.
+                let yOffset = -(AttributedStringTheme.bodyFontSize * 0.1)
+                attachment.bounds = CGRect(
+                    x: 0, y: yOffset,
+                    width: symbolImage.size.width,
+                    height: symbolImage.size.height
+                )
+                result = NSMutableAttributedString(attachment: attachment)
+                result.addAttribute(.foregroundColor, value: theme.subtleColor, range: NSRange(location: 0, length: result.length))
+                result.append(NSAttributedString(string: " ", attributes: markerAttrs))
+            } else {
+                // Fallback to Unicode if SF Symbol is unavailable.
+                let marker = checkbox == .checked ? "\u{2611}\t" : "\u{2610}\t"
+                result = NSMutableAttributedString(string: marker, attributes: markerAttrs)
+            }
+        } else if ordered {
+            let marker = "\(index).\t"
+            result = NSMutableAttributedString(string: marker, attributes: markerAttrs)
+        } else {
+            let marker = "\u{2022}\t"  // •
+            result = NSMutableAttributedString(string: marker, attributes: markerAttrs)
+        }
 
         // Track where this item's own text starts (before nested lists).
         let itemContentStart = 0

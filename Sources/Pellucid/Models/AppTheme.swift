@@ -27,6 +27,15 @@ enum AppTheme: String, CaseIterable, Sendable {
         }
     }
 
+    /// SwiftUI Color for the detail view background. Used by ContentView to
+    /// theme the area around the NSTextView (sidebar, empty states, etc.).
+    func windowBackgroundColor(isDark: Bool) -> Color {
+        switch self {
+        case .default: Color(.windowBackgroundColor)
+        case .solarized: isDark ? Solarized.base03 : Solarized.base3
+        }
+    }
+
     func syntaxColors(isDark: Bool) -> SyntaxColorPalette {
         switch self {
         case .default: .default

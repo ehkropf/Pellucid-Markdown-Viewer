@@ -51,6 +51,34 @@ final class MarkdownNSTextView: NSTextView {
     /// Observer for scroll view bounds changes (hides copy button on scroll).
     nonisolated(unsafe) private var scrollObserver: NSObjectProtocol?
 
+    // MARK: - Content Column Layout
+
+    /// Maximum content column width. The text container is sized to
+    /// min(maxContentWidth, viewWidth - 2 * minHorizontalPadding).
+    var maxContentWidth: CGFloat = 740.0
+
+    /// Minimum horizontal padding from the text view's edges to the content column.
+    var minHorizontalPadding: CGFloat = 32.0
+
+    /// Vertical padding (top/bottom) for the text container.
+    var verticalPadding: CGFloat = 40.0
+
+    /// Recomputes textContainerInset and textContainer.size so the content column
+    /// is centered within the text view, with maxContentWidth as the upper bound.
+    private func updateContentColumnLayout() {
+        guard let textContainer else { return }
+        let viewWidth = bounds.width
+        let containerWidth = min(maxContentWidth, max(0, viewWidth - 2 * minHorizontalPadding))
+        let leftInset = max(minHorizontalPadding, (viewWidth - containerWidth) / 2)
+        textContainer.size = NSSize(width: containerWidth, height: .greatestFiniteMagnitude)
+        textContainerInset = NSSize(width: leftInset, height: verticalPadding)
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        updateContentColumnLayout()
+    }
+
     // MARK: - Background Drawing
 
     override func drawBackground(in rect: NSRect) {
@@ -146,7 +174,8 @@ final class MarkdownNSTextView: NSTextView {
             blockRect.origin.x += origin.x
             blockRect.origin.y += origin.y
 
-            // Expand to include padding.
+            // Expand the glyph bounding rect by codeBlockPadding so the background
+            // sits visually outside the text. Content-hugging width matches reference.
             let padding = theme.codeBlockPadding
             blockRect = blockRect.insetBy(dx: -padding, dy: -padding)
 
@@ -217,32 +246,66 @@ final class MarkdownNSTextView: NSTextView {
         origin: NSPoint,
         theme: AttributedStringTheme
     ) {
+        // Find the maximum blockquote nesting level in the visible range.
+        var maxLevel = 0
         textStorage.enumerateAttribute(
-            .blockquoteRange,
-            in: visibleRange,
-            options: []
-        ) { value, range, _ in
-            guard value != nil else { return }
+            .blockquoteRange, in: visibleRange, options: []
+        ) { value, _, _ in
+            if let level = value as? Int, level > maxLevel {
+                maxLevel = level
+            }
+        }
 
-            let glyphRange = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
-            var blockRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
-            blockRect.origin.x += origin.x
-            blockRect.origin.y += origin.y
+        guard maxLevel > 0 else { return }
 
-            // Draw vertical accent bar at the left edge of the blockquote indent.
-            let barRect = NSRect(
-                x: origin.x + theme.blockquoteBarWidth,
-                y: blockRect.origin.y,
-                width: theme.blockquoteBarWidth,
-                height: blockRect.height
-            )
-            let barPath = NSBezierPath(
-                roundedRect: barRect,
-                xRadius: theme.blockquoteBarWidth / 2,
-                yRadius: theme.blockquoteBarWidth / 2
-            )
-            theme.blockquoteBarColor.setFill()
-            barPath.fill()
+        let perLevel = AttributedStringTheme.bodyFontSize * 1.2
+        theme.blockquoteBarColor.setFill()
+
+        // Draw one continuous bar per nesting level. For each level N,
+        // collect all ranges with blockquoteRange >= N and union nearby
+        // bounding rects so the bar spans the full blockquote including
+        // nested content.
+        for barLevel in 1...maxLevel {
+            var groups: [NSRect] = []
+
+            textStorage.enumerateAttribute(
+                .blockquoteRange, in: visibleRange, options: []
+            ) { value, range, _ in
+                guard let level = value as? Int, level >= barLevel else { return }
+
+                let glyphRange = layoutManager.glyphRange(
+                    forCharacterRange: range, actualCharacterRange: nil
+                )
+                var blockRect = layoutManager.boundingRect(
+                    forGlyphRange: glyphRange, in: textContainer
+                )
+                blockRect.origin.x += origin.x
+                blockRect.origin.y += origin.y
+
+                // Merge with the previous group if vertically adjacent
+                // (within one line height — same blockquote).
+                if let last = groups.last, blockRect.origin.y <= last.maxY + 20 {
+                    groups[groups.count - 1] = last.union(blockRect)
+                } else {
+                    groups.append(blockRect)
+                }
+            }
+
+            for rect in groups {
+                let barX = origin.x + perLevel * CGFloat(barLevel - 1) + theme.blockquoteBarWidth
+                let barRect = NSRect(
+                    x: barX,
+                    y: rect.origin.y,
+                    width: theme.blockquoteBarWidth,
+                    height: rect.height
+                )
+                let barPath = NSBezierPath(
+                    roundedRect: barRect,
+                    xRadius: theme.blockquoteBarWidth / 2,
+                    yRadius: theme.blockquoteBarWidth / 2
+                )
+                barPath.fill()
+            }
         }
     }
 
@@ -268,15 +331,15 @@ final class MarkdownNSTextView: NSTextView {
             blockRect.origin.x += origin.x
             blockRect.origin.y += origin.y
 
-            // Draw a subtle line below the heading.
-            let lineY = blockRect.maxY + 4.0
+            // Draw a hairline below the heading, spanning the content column.
+            let lineY = blockRect.maxY + 6.0
             let lineRect = NSRect(
                 x: origin.x,
                 y: lineY,
                 width: textContainer.containerSize.width,
                 height: 1.0
             )
-            theme.subtleColor.withAlphaComponent(0.3).setFill()
+            theme.subtleColor.withAlphaComponent(0.55).setFill()
             NSBezierPath.fill(lineRect)
         }
     }
@@ -794,7 +857,8 @@ final class MarkdownNSTextView: NSTextView {
 
         guard let layoutManager, let textContainer else { return }
 
-        // Calculate the visual rect of the code block.
+        // Calculate the visual rect of the code block (matching drawCodeBlockBackgrounds:
+        // full content-column width, height padded vertically).
         let glyphRange = layoutManager.glyphRange(
             forCharacterRange: codeBlockRange,
             actualCharacterRange: nil
@@ -806,7 +870,6 @@ final class MarkdownNSTextView: NSTextView {
         blockRect.origin.x += textContainerOrigin.x
         blockRect.origin.y += textContainerOrigin.y
 
-        // Expand for padding (matching drawCodeBlockBackgrounds).
         if let theme = decorationTheme {
             let padding = theme.codeBlockPadding
             blockRect = blockRect.insetBy(dx: -padding, dy: -padding)
@@ -956,14 +1019,14 @@ struct MarkdownTextView: NSViewRepresentable {
     /// Window manager for opening markdown links in new windows.
     var windowManager: WindowManager?
 
-    /// Maximum content width (matching current 860pt layout).
-    private static let maxContentWidth: CGFloat = 860.0
+    /// Maximum content column width (centered within the scroll view).
+    private static let maxContentWidth: CGFloat = 740.0
 
-    /// Horizontal padding (matching current 32pt).
+    /// Minimum horizontal padding from the scroll view edges.
     private static let horizontalPadding: CGFloat = 32.0
 
-    /// Vertical padding.
-    private static let verticalPadding: CGFloat = 16.0
+    /// Vertical padding above the first block and below the last block.
+    private static let verticalPadding: CGFloat = 40.0
 
     // MARK: - NSViewRepresentable
 
@@ -992,21 +1055,14 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.isIncrementalSearchingEnabled = true
         textView.isAutomaticLinkDetectionEnabled = false
 
-        // Text container inset provides horizontal padding.
-        textView.textContainerInset = NSSize(
-            width: Self.horizontalPadding,
-            height: Self.verticalPadding
-        )
-
-        // Configure text container for max content width.
-        // The text container width limits line length; the text view itself
-        // fills the scroll view width, centering the content column.
+        // Configure the text container; widths are recomputed dynamically by
+        // MarkdownNSTextView.updateContentColumnLayout() so the content column
+        // stays centered within the scroll view as the window resizes.
+        textView.maxContentWidth = Self.maxContentWidth
+        textView.minHorizontalPadding = Self.horizontalPadding
+        textView.verticalPadding = Self.verticalPadding
         if let textContainer = textView.textContainer {
             textContainer.widthTracksTextView = false
-            textContainer.containerSize = NSSize(
-                width: Self.maxContentWidth,
-                height: CGFloat.greatestFiniteMagnitude
-            )
             textContainer.lineFragmentPadding = 0
         }
 
