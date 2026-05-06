@@ -14,67 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import MarkdownUI
+import Foundation
 import os.log
-import SwiftUI
-
-/// Regex-based syntax highlighter that covers common token types.
-/// Produces styled SwiftUI Text for use with MarkdownUI's CodeSyntaxHighlighter protocol.
-struct AppCodeSyntaxHighlighter: CodeSyntaxHighlighter {
-    let palette: SyntaxColorPalette
-
-    func highlightCode(_ code: String, language: String?) -> Text {
-        guard let language = language?.lowercased(),
-              let grammar = grammars[language]
-        else {
-            return Text(code)
-        }
-
-        let tokens = tokenize(code: code, grammar: grammar)
-        return buildText(code: code, tokens: tokens)
-    }
-
-    private func buildText(code: String, tokens: [Token]) -> Text {
-        guard !tokens.isEmpty else { return Text(code) }
-
-        let sorted = tokens.sorted { $0.range.lowerBound < $1.range.lowerBound }
-        var result = Text("")
-        var currentIndex = code.startIndex
-
-        for token in sorted {
-            guard let range = Range(token.range, in: code) else { continue }
-
-            if currentIndex < range.lowerBound {
-                result = result + Text(code[currentIndex..<range.lowerBound])
-            }
-
-            let tokenText = String(code[range])
-            result = result + Text(tokenText).foregroundColor(color(for: token.kind))
-
-            currentIndex = range.upperBound
-        }
-
-        if currentIndex < code.endIndex {
-            result = result + Text(code[currentIndex...])
-        }
-
-        return result
-    }
-
-    private func color(for kind: TokenKind) -> Color {
-        switch kind {
-        case .keyword: palette.keyword
-        case .string: palette.string
-        case .comment: palette.comment
-        case .number: palette.number
-        case .type: palette.type
-        case .function: palette.function
-        case .operator_: palette.operator_
-        case .attribute: palette.attribute
-        case .constant: palette.constant
-        }
-    }
-}
 
 // MARK: - Token types
 
@@ -324,8 +265,3 @@ private let cppGrammar = Grammar(patterns: [
     (#"\b0x[0-9a-fA-F']+\b"#, .number),
 ])
 
-// MARK: - MarkdownUI integration
-
-extension CodeSyntaxHighlighter where Self == AppCodeSyntaxHighlighter {
-    static var app: Self { AppCodeSyntaxHighlighter(palette: .default) }
-}

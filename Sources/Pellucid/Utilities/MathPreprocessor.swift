@@ -18,7 +18,7 @@ import Foundation
 import os.log
 
 /// Converts block-level `$$...$$` math delimiters to fenced ```math code blocks
-/// so the existing MathBlockView pipeline can render them.
+/// so the renderer's math handling pipeline can render them.
 func preprocessBlockMath(_ markdown: String) -> String {
     enum State {
         case normal

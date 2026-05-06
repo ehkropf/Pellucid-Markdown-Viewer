@@ -25,7 +25,6 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.5.0"),
-        .package(url: "https://github.com/gonzalezreal/swift-markdown-ui.git", from: "2.4.1"),
         .package(url: "https://github.com/mgriebling/SwiftMath.git", from: "1.0.0"),
     ],
     targets: [
@@ -33,7 +32,6 @@ let package = Package(
             name: "Pellucid",
             dependencies: [
                 .product(name: "Markdown", package: "swift-markdown"),
-                .product(name: "MarkdownUI", package: "swift-markdown-ui"),
                 .product(name: "SwiftMath", package: "SwiftMath"),
             ]
         ),

@@ -20,8 +20,8 @@ import Foundation
 let markdownExtensions = ["md", "markdown", "mdown", "mkd"]
 
 /// Converts heading text to a kebab-cased anchor ID.
-/// Matches MarkdownUI's internal `String.kebabCased()` algorithm exactly,
-/// so TOC entry IDs align with the `.id()` MarkdownUI attaches to heading views.
+/// Used by both TOCExtractor (for sidebar entry IDs) and MarkdownRenderer
+/// (for heading anchor IDs) — the two must match for scroll-to-heading to work.
 func slugify(_ text: String) -> String {
     text
         .components(separatedBy: .alphanumerics.inverted)

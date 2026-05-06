@@ -21,6 +21,7 @@ import SwiftUI
 
 /// Per-file document model. Owns the file URL, raw/processed markdown, TOC, and file watcher.
 /// `processedMarkdown` is `rawMarkdown` with `$$` blocks converted to fenced math blocks.
+/// `parsedDocument` holds the swift-markdown AST for rendering by ContentView.
 @MainActor
 final class MarkdownDocument: ObservableObject {
     @Published private(set) var fileURL: URL?
@@ -29,6 +30,7 @@ final class MarkdownDocument: ObservableObject {
     @Published private(set) var tocEntries: [TOCEntry] = []
     @Published private(set) var errorMessage: String?
     @Published private(set) var processedMarkdown: String = ""
+    @Published private(set) var parsedDocument: Document?
 
     private static let logger = Logger(subsystem: "Pellucid", category: "MarkdownDocument")
     private let fileWatcher = FileWatcher()
@@ -39,6 +41,7 @@ final class MarkdownDocument: ObservableObject {
         errorMessage = message
         rawMarkdown = ""
         processedMarkdown = ""
+        parsedDocument = nil
         tocEntries = []
     }
 
@@ -66,16 +69,23 @@ final class MarkdownDocument: ObservableObject {
         do {
             let content = try String(contentsOf: url, encoding: .utf8)
             rawMarkdown = content
-            processedMarkdown = preprocessBlockMath(content)
+            let processed = preprocessBlockMath(content)
+            processedMarkdown = processed
             errorMessage = nil
 
-            let document = Document(parsing: content)
-            tocEntries = TOCExtractor.extractTOC(from: document)
+            // Parse the preprocessed markdown (with $$→```math conversion) so the
+            // renderer sees fenced math blocks. TOC extraction uses the raw content
+            // to get accurate line offsets.
+            let rawDoc = Document(parsing: content)
+            tocEntries = TOCExtractor.extractTOC(from: rawDoc)
+
+            parsedDocument = Document(parsing: processed)
         } catch {
             Self.logger.error("Failed to read \(url.path): \(error.localizedDescription)")
             errorMessage = "Error reading file: \(error.localizedDescription)"
             rawMarkdown = ""
             processedMarkdown = ""
+            parsedDocument = nil
             tocEntries = []
         }
     }
