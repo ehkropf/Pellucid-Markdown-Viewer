@@ -101,6 +101,8 @@ Makefile         — build, test, clean, portindex, checksums targets
 - `nonisolated(unsafe)` on `scrollObserver` in `MarkdownNSTextView` is correct — only accessed from `deinit` which is non-isolated, but the observer is always created/removed on MainActor
 - Copy behavior: Cmd+C inside a code block copies verbatim code text; outside a code block, copies raw markdown source via SourceMap lookup; fallback to plain text if SourceMap lookup fails
 - MacPorts Portfile requires `--disable-sandbox` (SPM sandbox conflicts with MacPorts sandbox) and `--cache-path` (build user can't write to default SPM cache)
+- Don't set `paragraphSpacing`/`paragraphSpacingBefore` on `codeBlockParagraphStyle` — each `\n` in a fenced block is its own paragraph, so any nonzero value produces per-line banding instead of block-level spacing
+- Read-only `MarkdownTextView` does not respond to PageDown/End/arrow keys for scrolling — drive scroll via TOC clicks or `NSScrollView.scroll(_:)` if you need scripted navigation
 
 ## Testing
 
