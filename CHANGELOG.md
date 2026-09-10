@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0 — 2026-09-10
+
+- Replace MarkdownUI with native NSTextView-based rendering — enables text selection and Cmd+click
+- Add Cmd+click to open markdown links in MacVim, context menus, improved scroll-to-heading
+- Add smart copy: verbatim code in code blocks, raw markdown source elsewhere, with hover copy button on code blocks
+- Wire up GFM tables and PlantUML diagram rendering (async placeholder pattern) in the new renderer
+- Fix PlantUML diagrams getting stuck on "Rendering diagram..." forever on failure — now shows an error placeholder
+- Visual tuning: centered content column, tightened heading rhythm, scaled diagrams
+
 ## 1.1.3 — 2026-03-29
 
 - Fix PlantUML cache eviction dropping all entries at 51 (now FIFO, evicts oldest 10)
