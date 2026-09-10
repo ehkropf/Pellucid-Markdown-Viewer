@@ -261,14 +261,46 @@ struct ContentView: View {
         plantUMLTask?.cancel()
 
         plantUMLTask = Task {
+            // Work on a mutable copy of the attributed string.
+            let mutableCopy = NSMutableAttributedString(attributedString: attrString)
+
+            func replacePlaceholder(for entry: PlantUMLEntry, with attachment: DiagramAttachment) {
+                let replacementString = NSMutableAttributedString(attachment: attachment)
+
+                // Preserve paragraph style from the placeholder.
+                let existingAttrs = mutableCopy.attributes(at: entry.range.location, effectiveRange: nil)
+                if let paraStyle = existingAttrs[.paragraphStyle] {
+                    replacementString.addAttribute(
+                        .paragraphStyle,
+                        value: paraStyle,
+                        range: NSRange(location: 0, length: replacementString.length)
+                    )
+                }
+
+                mutableCopy.replaceCharacters(in: entry.range, with: replacementString)
+            }
+
             guard await PlantUMLRenderer.shared.isAvailable() else {
-                Self.logger.info("PlantUML is not available; diagram placeholders will remain")
+                Self.logger.info("PlantUML is not available; showing error placeholders")
+                let errorImage = DiagramAttachment.renderErrorPlaceholder(
+                    message: PlantUMLError.notInstalled.localizedDescription
+                )
+                for entry in entries.reversed() {
+                    let errorAttachment = DiagramAttachment(
+                        renderedImage: errorImage,
+                        plantUMLSource: entry.source,
+                        isDarkMode: entry.isDarkMode
+                    )
+                    replacePlaceholder(for: entry, with: errorAttachment)
+                }
+                guard !Task.isCancelled else { return }
+                renderResult = RenderResult(
+                    attributedString: mutableCopy,
+                    sourceMap: result.sourceMap
+                )
                 return
             }
             guard !Task.isCancelled else { return }
-
-            // Work on a mutable copy of the attributed string.
-            let mutableCopy = NSMutableAttributedString(attributedString: attrString)
 
             // Process entries in reverse order so range offsets remain valid.
             for entry in entries.reversed() {
@@ -281,21 +313,19 @@ struct ContentView: View {
                         plantUMLSource: entry.source,
                         isDarkMode: entry.isDarkMode
                     )
-                    let replacementString = NSMutableAttributedString(attachment: renderedAttachment)
-
-                    // Preserve paragraph style from the placeholder.
-                    let existingAttrs = mutableCopy.attributes(at: entry.range.location, effectiveRange: nil)
-                    if let paraStyle = existingAttrs[.paragraphStyle] {
-                        replacementString.addAttribute(
-                            .paragraphStyle,
-                            value: paraStyle,
-                            range: NSRange(location: 0, length: replacementString.length)
-                        )
-                    }
-
-                    mutableCopy.replaceCharacters(in: entry.range, with: replacementString)
+                    replacePlaceholder(for: entry, with: renderedAttachment)
                 } catch {
                     Self.logger.warning("PlantUML render failed: \(error.localizedDescription)")
+
+                    let errorImage = DiagramAttachment.renderErrorPlaceholder(
+                        message: error.localizedDescription
+                    )
+                    let errorAttachment = DiagramAttachment(
+                        renderedImage: errorImage,
+                        plantUMLSource: entry.source,
+                        isDarkMode: entry.isDarkMode
+                    )
+                    replacePlaceholder(for: entry, with: errorAttachment)
                 }
             }
 

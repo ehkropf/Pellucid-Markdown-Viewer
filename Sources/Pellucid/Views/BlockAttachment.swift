@@ -254,6 +254,36 @@ final class DiagramAttachment: NSTextAttachment, MarkdownAttachment {
 
         return result
     }
+
+    // MARK: - Error Placeholder
+
+    /// Renders an error placeholder when PlantUML rendering fails.
+    static func renderErrorPlaceholder(message: String) -> NSImage {
+        let placeholderSize = CGSize(width: 300, height: 60)
+        let displayText = "\u{26A0} \(message.prefix(80))"
+        let font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: NSColor.secondaryLabelColor,
+        ]
+
+        return NSImage(size: placeholderSize, flipped: false) { bounds in
+            guard let context = NSGraphicsContext.current?.cgContext else { return false }
+            context.saveGState()
+
+            context.setFillColor(NSColor.systemRed.withAlphaComponent(0.1).cgColor)
+            let bgPath = CGPath(roundedRect: bounds, cornerWidth: 8, cornerHeight: 8, transform: nil)
+            context.addPath(bgPath)
+            context.fillPath()
+
+            let attrString = NSAttributedString(string: displayText, attributes: attrs)
+            let textRect = bounds.insetBy(dx: 12, dy: 8)
+            attrString.draw(with: textRect, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
+
+            context.restoreGState()
+            return true
+        }
+    }
 }
 
 // MARK: - MathAttachment
