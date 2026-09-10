@@ -122,7 +122,6 @@ Built entirely with Swift Package Manager — no Xcode project required.
 | Package | Purpose |
 |---------|---------|
 | [swift-markdown](https://github.com/swiftlang/swift-markdown) | GFM AST parsing |
-| [swift-markdown-ui](https://github.com/gonzalezreal/swift-markdown-ui) | SwiftUI markdown rendering |
 | [SwiftMath](https://github.com/mgriebling/SwiftMath) | LaTeX math rendering |
 
 ## License
